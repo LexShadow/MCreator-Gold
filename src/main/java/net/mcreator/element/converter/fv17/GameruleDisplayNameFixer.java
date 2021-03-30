@@ -16,32 +16,25 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package net.mcreator.blockly;
+package net.mcreator.element.converter.fv17;
 
-public class BlocklyCompileNote {
+import com.google.gson.JsonElement;
+import net.mcreator.element.GeneratableElement;
+import net.mcreator.element.converter.IConverter;
+import net.mcreator.element.types.GameRule;
+import net.mcreator.workspace.Workspace;
 
-	private final Type type;
-	private final String message;
+public class GameruleDisplayNameFixer implements IConverter {
 
-	public BlocklyCompileNote(Type type, String message) {
-		this.type = type;
-		this.message = message;
+	@Override
+	public GeneratableElement convert(Workspace workspace, GeneratableElement input, JsonElement jsonElementInput) {
+		GameRule gameRule = (GameRule) input;
+		gameRule.displayName = gameRule.description;
+		return gameRule;
 	}
 
-	public Type getType() {
-		return type;
-	}
-
-	public String getMessage() {
-		return message;
-	}
-
-	@Override public String toString() {
-		return type.name() + ": " + message;
-	}
-
-	public enum Type {
-		INFO, WARNING, ERROR
+	@Override public int getVersionConvertingTo() {
+		return 17;
 	}
 
 }

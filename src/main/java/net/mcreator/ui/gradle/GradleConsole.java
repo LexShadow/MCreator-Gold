@@ -37,7 +37,7 @@ import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.init.UIRES;
 import net.mcreator.ui.laf.SlickDarkScrollBarUI;
 import net.mcreator.util.HtmlUtils;
-import net.mcreator.util.TimeUtils;
+import net.mcreator.util.math.TimeUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gradle.internal.impldep.org.apache.commons.lang.exception.ExceptionUtils;
@@ -352,12 +352,16 @@ public class GradleConsole extends JPanel {
 		task.setStandardError(new OutputStreamEventHandler(line -> SwingUtilities.invokeLater(() -> {
 			taskErr.append(line).append("\n");
 			if (serr.isSelected()) {
-				if (!line.startsWith("Note: Some input files use or ov"))
-					if (!line.startsWith("Note: Recompile with -Xlint"))
-						if (!line.startsWith("Note: Some input files use unch"))
-							if (!line.contains("uses or overrides a deprecated API"))
-								if (!line.contains("unchecked or unsafe operations"))
-									append(line, new Color(0, 255, 182));
+				if (line.startsWith("[")) {
+					appendAutoColor(line);
+				} else {
+					if (!line.startsWith("Note: Some input files use or ov"))
+						if (!line.startsWith("Note: Recompile with -Xlint"))
+							if (!line.startsWith("Note: Some input files use unch"))
+								if (!line.contains("uses or overrides a deprecated API"))
+									if (!line.contains("unchecked or unsafe operations"))
+										append(line, new Color(0, 255, 182));
+				}
 			}
 		})));
 
