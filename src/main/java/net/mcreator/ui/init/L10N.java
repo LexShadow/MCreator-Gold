@@ -20,9 +20,10 @@ package net.mcreator.ui.init;
 
 import net.mcreator.plugin.PluginLoader;
 import net.mcreator.preferences.PreferencesManager;
+import net.mcreator.ui.help.HelpLoader;
+import net.mcreator.util.FilenameUtilsPatched;
 import net.mcreator.util.locale.LocaleRegistration;
 import net.mcreator.util.locale.UTF8Control;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,6 +35,8 @@ import java.util.stream.Collectors;
 public class L10N {
 
 	private static final Logger LOG = LogManager.getLogger("L10N");
+
+	public static final Locale DEFAULT_LOCALE = new Locale("en", "US");
 
 	private static ResourceBundle rb;
 	private static ResourceBundle rb_en;
@@ -47,37 +50,59 @@ public class L10N {
 	public static void initTranslations() {
 		initLocalesImpl();
 
-		rb = supportedLocales.get(getLocale()).getResourceBundle();
+		// Clear selectedLocale cache
+		selectedLocale = null;
+
+		if (supportedLocales.containsKey(getLocale())) {
+			rb = supportedLocales.get(getLocale()).resourceBundle();
+		} else {
+			LOG.warn("Locale " + getLocale() + " is not supported. Falling back to default locale.");
+
+			rb = supportedLocales.get(DEFAULT_LOCALE).resourceBundle();
+		}
 
 		LOG.info("Setting default locale to: " + getLocale());
 		Locale.setDefault(getLocale());
+		JComponent.setDefaultLocale(getLocale());
 	}
 
 	private static void initLocalesImpl() {
+		if (rb_en != null) // check if locales are already loaded
+			return;
+
 		rb_en = ResourceBundle.getBundle("lang/texts", Locale.ROOT, PluginLoader.INSTANCE, new UTF8Control());
 
 		double countAll = Collections.list(rb_en.getKeys()).size();
 
 		Set<String> localeFiles = PluginLoader.INSTANCE.getResourcesInPackage("lang");
-		supportedLocales = localeFiles.stream().map(FilenameUtils::getBaseName).filter(e -> e.contains("_"))
+		supportedLocales = localeFiles.stream().map(FilenameUtilsPatched::getBaseName).filter(e -> e.contains("_"))
 				.map(e -> e.split("_")).map(e -> new Locale(e[1], e[2])).collect(Collectors.toMap(key -> key, value -> {
-					ResourceBundle rb = ResourceBundle
-							.getBundle("lang/texts", value, PluginLoader.INSTANCE, new UTF8Control());
+					ResourceBundle rb = ResourceBundle.getBundle("lang/texts", value, PluginLoader.INSTANCE,
+							new UTF8Control());
 					return new LocaleRegistration(rb,
-							(int) Math.ceil(Collections.list(rb.getKeys()).size() / countAll * 100d));
+							(int) Math.ceil(Collections.list(rb.getKeys()).size() / countAll * 100d),
+							HelpLoader.getCoverageForLocale(value));
 				}));
 
-		supportedLocales.put(new Locale("en", "US"), new LocaleRegistration(rb_en, 100));
+		supportedLocales.put(DEFAULT_LOCALE, new LocaleRegistration(rb_en, 100, 100));
 	}
 
 	public static Set<Locale> getSupportedLocales() {
 		return supportedLocales.keySet();
 	}
 
-	public static int getLocaleSupport(Locale locale) {
+	public static int getUITextsLocaleSupport(Locale locale) {
 		LocaleRegistration localeRegistration = supportedLocales.get(locale);
 		if (localeRegistration != null)
-			return localeRegistration.getPercentage();
+			return localeRegistration.uiTextsPercentage();
+
+		return 0;
+	}
+
+	public static int getHelpTipsSupport(Locale locale) {
+		LocaleRegistration localeRegistration = supportedLocales.get(locale);
+		if (localeRegistration != null)
+			return localeRegistration.helpTipsPercentage();
 
 		return 0;
 	}
@@ -110,7 +135,7 @@ public class L10N {
 
 		if (rb.containsKey(key))
 			return MessageFormat.format(rb.getString(key), parameters);
-		else if (key.startsWith("blockly.") && key.endsWith(".tooltip"))
+		else if (key.startsWith("blockly.") && (key.endsWith(".tooltip") || key.endsWith(".description")))
 			return null;
 		else if (isTestingEnvironment)
 			throw new RuntimeException("Failed to load any translation for key: " + key);
@@ -126,7 +151,7 @@ public class L10N {
 
 		if (rb_en.containsKey(key))
 			return MessageFormat.format(rb_en.getString(key), parameters);
-		else if (key.startsWith("blockly.") && key.endsWith(".tooltip"))
+		else if (key.startsWith("blockly.") && (key.endsWith(".tooltip") || key.endsWith(".description")))
 			return null;
 		else if (isTestingEnvironment)
 			throw new RuntimeException("Failed to load any translation for key: " + key);
@@ -150,6 +175,14 @@ public class L10N {
 
 	public static JRadioButton radiobutton(String key, Object... parameter) {
 		return new JRadioButton(t(key, parameter));
+	}
+
+	public static JToggleButton togglebutton(String key, Object... parameter) {
+		return new JToggleButton(t(key, parameter));
+	}
+
+	public static JMenu menu(String key, Object... parameter) {
+		return new JMenu(t(key, parameter));
 	}
 
 }

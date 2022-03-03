@@ -20,8 +20,8 @@ package net.mcreator.blockly.data;
 
 import net.mcreator.ui.init.L10N;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 public class ExternalTrigger {
@@ -34,8 +34,8 @@ public class ExternalTrigger {
 	@Nullable public List<Dependency> dependencies_provided;
 
 	public boolean cancelable;
-
 	public boolean has_result;
+	public String side = "both";
 
 	public String getID() {
 		return id;

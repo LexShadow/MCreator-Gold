@@ -42,8 +42,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gradle.internal.impldep.org.apache.commons.lang.exception.ExceptionUtils;
 import org.gradle.tooling.*;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import javax.swing.*;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.text.SimpleAttributeSet;
@@ -54,8 +54,10 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,6 +89,9 @@ public class GradleConsole extends JPanel {
 
 	private CancellationTokenSource cancellationSource = GradleConnector.newCancellationTokenSource();
 
+	// a flag to prevent infinite re-runs in case when re-run does not solve the build problem
+	public boolean rerunFlag = false;
+
 	public GradleConsole(MCreator ref) {
 		this.ref = ref;
 
@@ -105,13 +110,13 @@ public class GradleConsole extends JPanel {
 					try {
 						ProjectJarManager jarManager = ref.getGenerator().getProjectJarManager();
 						if (jarManager != null) {
-							DeclarationFinder.InClassPosition position = ClassFinder
-									.fqdnToInClassPosition(ref.getWorkspace(), fileurl, "mod.mcreator", jarManager);
+							DeclarationFinder.InClassPosition position = ClassFinder.fqdnToInClassPosition(
+									ref.getWorkspace(), fileurl, "mod.mcreator", jarManager);
 
 							if (position != null) {
-								CodeEditorView codeEditorView = ProjectFileOpener
-										.openFileSpecific(ref, position.classFileNode, position.openInReadOnly,
-												position.carret, position.virtualFile);
+								CodeEditorView codeEditorView = ProjectFileOpener.openFileSpecific(ref,
+										position.classFileNode, position.openInReadOnly, position.carret,
+										position.virtualFile);
 								if (codeEditorView != null)
 									codeEditorView.jumpToLine(linenum);
 							}
@@ -167,7 +172,7 @@ public class GradleConsole extends JPanel {
 		options.add(searchen);
 
 		KeyStrokes.registerKeyStroke(
-				KeyStroke.getKeyStroke(KeyEvent.VK_F, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()), pan,
+				KeyStroke.getKeyStroke(KeyEvent.VK_F, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()), pan,
 				new AbstractAction() {
 					@Override public void actionPerformed(ActionEvent actionEvent) {
 						searchen.setSelected(true);
@@ -248,8 +253,8 @@ public class GradleConsole extends JPanel {
 	}
 
 	public String getConsoleText() {
-		String retval = pan.getText().replaceAll("(?i)<br[^>]* */?>", System.lineSeparator()).replaceAll("<.*?>", "")
-				.trim();
+		String retval = pan.getText().replace("\n", "").replace("\r", "").replaceAll("(?i)<br[^>]* */?>", "\n")
+				.replaceAll("<.*?>", "").replace("  ", " ").replace("  ", " ").replace("  ", " ");
 		return HtmlUtils.unescapeHtml(retval).trim();
 	}
 
@@ -281,6 +286,8 @@ public class GradleConsole extends JPanel {
 		pan.clearConsole();
 		searchBar.reinstall(pan);
 
+		textAccent = null;
+
 		SimpleAttributeSet keyWord = new SimpleAttributeSet();
 		StyleConstants.setFontSize(keyWord, 4);
 		pan.insertString("\n", keyWord);
@@ -294,8 +301,10 @@ public class GradleConsole extends JPanel {
 					.getGenerator().getGeneratorName() + ", " + ref.getApplication().getDeviceInfo().getSystemBits()
 					+ "-bit, " + ref.getApplication().getDeviceInfo().getRamAmountMB() + " MB, " + ref.getApplication()
 					.getDeviceInfo().getOsName() + ", JVM " + ref.getApplication().getDeviceInfo().getJvmVersion()
-					+ ", JAVA_HOME: " + (java_home != null ? java_home : "Default (not set)");
+					+ ", JAVA_HOME: " + (java_home != null ? java_home : "Default (not set)") + ", started on: "
+					+ new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss").format(Calendar.getInstance().getTime());
 			append(deviceInfo, new Color(127, 120, 120));
+			append(" ");
 			taskOut.append(deviceInfo);
 		}
 
@@ -320,32 +329,61 @@ public class GradleConsole extends JPanel {
 		if (PreferencesManager.PREFERENCES.gradle.offline)
 			arguments.add("--offline");
 
-		task.withArguments(arguments);
+		task.addArguments(arguments);
 
 		task.withCancellationToken(cancellationSource.token());
 
 		task.setStandardOutput(new OutputStreamEventHandler(line -> SwingUtilities.invokeLater(() -> {
 			taskOut.append(line).append("\n");
 			if (sinfo.isSelected()) {
-				if (!line.startsWith("Note: Some input files use or ov"))
-					if (!line.startsWith("Note: Recompile with -Xlint"))
-						if (!line.startsWith("Note: Some input files use unch"))
-							if (!line.contains("Advanced terminal features are not available in this environment"))
-								if (!line.contains("Disabling terminal, you're running in an unsupported environment"))
-									if (!line.contains("uses or overrides a deprecated API"))
-										if (!line.contains("unchecked or unsafe operations")) {
-											if (line.startsWith(":") || line.startsWith(">")) {
-												if (line.contains(" UP-TO-DATE") || line.contains(" NO-SOURCE") || line
-														.contains(" SKIPPED"))
-													append(line, new Color(0x7B7B7B), true);
-												else
-													append(line, new Color(0xDADADA), true);
-											} else if (line.startsWith("BUILD SUCCESSFUL")) {
-												append(line, new Color(187, 232, 108), false);
-											} else {
-												appendAutoColor(line);
-											}
-										}
+				if (line.startsWith("Note: Some input files use or ov"))
+					return;
+				if (line.startsWith("Note: Recompile with -Xlint"))
+					return;
+				if (line.startsWith("Note: Some input files use unch"))
+					return;
+				if (line.contains("Advanced terminal features are not available in this environment"))
+					return;
+				if (line.contains("Disabling terminal, you're running in an unsupported environment"))
+					return;
+				if (line.contains("uses or overrides a deprecated API"))
+					return;
+				if (line.contains("unchecked or unsafe operations"))
+					return;
+				if (line.startsWith("Deprecated Gradle features were used"))
+					return;
+				if (line.startsWith("WARNING: (c) 2020 Microsoft Corporation."))
+					return;
+				if (line.contains("to show the individual deprecation warnings and determine"))
+					return;
+				if (line.contains("#sec:command_line_warnings"))
+					return;
+
+				if (line.startsWith("WARNING: This project is configured to use the official obfuscation")) {
+					append("The code of this workspace uses official obfuscation mappings provided by Mojang. These mappings fall under their associated license you should be fully aware of.",
+							new Color(232, 203, 108));
+					append("(c) 2020 Microsoft Corporation. These mappings are provided \"as-is\" and you bear the risk of using them. You may copy and use the mappings for development purposes,",
+							new Color(173, 173, 173));
+					append("but you may not redistribute the mappings complete and unmodified. Microsoft makes no warranties, express or implied, with respect to the mappings provided here.",
+							new Color(173, 173, 173));
+					append("Use and modification of this document or the source code (in any form) of Minecraft: Java Edition is governed by the Minecraft End User License Agreement available",
+							new Color(173, 173, 173));
+					append("at https://account.mojang.com/documents/minecraft_eula.", new Color(173, 173, 173));
+					append(" ");
+					return;
+				}
+
+				if (line.startsWith(":") || line.startsWith(">")) {
+					if (line.contains(" UP-TO-DATE") || line.contains(" NO-SOURCE") || line.contains(" SKIPPED"))
+						append(line, new Color(0x7B7B7B), true);
+					else
+						append(line, new Color(0xDADADA), true);
+				} else if (line.startsWith("BUILD SUCCESSFUL")) {
+					append(" ");
+					append(line, new Color(187, 232, 108), false);
+				} else {
+					appendAutoColor(line);
+				}
 			}
 		})));
 
@@ -355,19 +393,37 @@ public class GradleConsole extends JPanel {
 				if (line.startsWith("[")) {
 					appendAutoColor(line);
 				} else {
-					if (!line.startsWith("Note: Some input files use or ov"))
-						if (!line.startsWith("Note: Recompile with -Xlint"))
-							if (!line.startsWith("Note: Some input files use unch"))
-								if (!line.contains("uses or overrides a deprecated API"))
-									if (!line.contains("unchecked or unsafe operations"))
-										append(line, new Color(0, 255, 182));
+					if (line.startsWith("Note: Some input files use or ov"))
+						return;
+					if (line.startsWith("Note: Recompile with -Xlint"))
+						return;
+					if (line.startsWith("Note: Some input files use unch"))
+						return;
+					if (line.contains("uses or overrides a deprecated API"))
+						return;
+					if (line.contains("unchecked or unsafe operations"))
+						return;
+					if (line.startsWith("WARNING: An illegal reflective access"))
+						return;
+					if (line.startsWith("WARNING: Illegal reflective access"))
+						return;
+					if (line.startsWith("WARNING: Please consider reporting this"))
+						return;
+					if (line.startsWith("WARNING: Use --illegal-access=warn to enable"))
+						return;
+					if (line.startsWith("WARNING: All illegal access operations will"))
+						return;
+					if (line.startsWith("SLF4J: "))
+						return;
+
+					append(line, new Color(0, 255, 182));
 				}
 			}
 		})));
 
 		task.addProgressListener((ProgressListener) event -> ref.statusBar.setGradleMessage(event.getDescription()));
 
-		task.run(new ResultHandler<Void>() {
+		task.run(new ResultHandler<>() {
 			@Override public void onComplete(Void result) {
 				SwingUtilities.invokeLater(() -> {
 					ref.getWorkspace().checkFailingGradleDependenciesAndClear(); // clear flag without checking
@@ -385,8 +441,19 @@ public class GradleConsole extends JPanel {
 							.checkFailingGradleDependenciesAndClear();
 
 					if (failure instanceof BuildException) {
-						if (workspaceReportedFailingGradleDependencies || GradleErrorDecoder
-								.isErrorCausedByCorruptedCaches(taskErr.toString() + taskOut.toString())) {
+						if (GradleErrorDecoder.doesErrorSuggestRerun(taskErr.toString() + taskOut)) {
+							if (!rerunFlag) {
+								rerunFlag = true;
+
+								LOG.warn("Gradle task suggested re-run. Attempting re-running task: " + command);
+
+								// Re-run the same command with the same listener
+								GradleConsole.this.exec(command, taskSpecificListener);
+
+								return;
+							}
+						} else if (workspaceReportedFailingGradleDependencies
+								|| GradleErrorDecoder.isErrorCausedByCorruptedCaches(taskErr.toString() + taskOut)) {
 							Object[] options = { "Clear Gradle caches", "Clear entire Gradle folder",
 									"<html><font color=gray>Do nothing" };
 							int reply = JOptionPane.showOptionDialog(ref,
@@ -404,11 +471,12 @@ public class GradleConsole extends JPanel {
 							errorhandled = true;
 						} else if (taskErr.toString().contains("compileJava FAILED") || taskOut.toString()
 								.contains("compileJava FAILED")) {
-							errorhandled = CodeErrorDialog
-									.showCodeErrorDialog(ref, taskErr.toString() + taskOut.toString());
+							errorhandled = CodeErrorDialog.showCodeErrorDialog(ref, taskErr.toString() + taskOut);
 						}
+						append(" ");
 						append("BUILD FAILED", new Color(0xF98771));
 					} else if (failure instanceof BuildCancelledException) {
+						append(" ");
 						append("TASK CANCELED", new Color(0xF5F984));
 						succeed();
 						taskComplete(GradleErrorCodes.STATUS_OK);
@@ -416,6 +484,7 @@ public class GradleConsole extends JPanel {
 					} else if (failure.getCause().getClass().getSimpleName().equals("DaemonDisappearedException")
 							// workaround for MDK bug with gradle daemon
 							&& command.startsWith("run")) {
+						append(" ");
 						append("RUN COMPLETE", new Color(0, 255, 182));
 						succeed();
 						taskComplete(GradleErrorCodes.STATUS_OK);
@@ -430,6 +499,8 @@ public class GradleConsole extends JPanel {
 									append(line);
 							});
 						}
+
+						append(" ");
 						append("TASK EXECUTION FAILED", new Color(0xF98771));
 					}
 
@@ -438,8 +509,8 @@ public class GradleConsole extends JPanel {
 					int resultcode = 0;
 
 					if (!errorhandled)
-						resultcode = GradleErrorDecoder
-								.processErrorAndShowMessage(taskOut.toString(), taskErr.toString(), ref);
+						resultcode = GradleErrorDecoder.processErrorAndShowMessage(taskOut.toString(),
+								taskErr.toString(), ref);
 
 					if (resultcode == GradleErrorCodes.STATUS_OK)
 						resultcode = GradleErrorCodes.GRADLE_BUILD_FAILED;
@@ -460,17 +531,24 @@ public class GradleConsole extends JPanel {
 				ref.consoleTab.repaint();
 				ref.statusBar.reloadGradleIndicator();
 				ref.statusBar.setGradleMessage(L10N.t("gradle.idle"));
+
+				// on success, we clear the re-run flag
+				if (rerunFlag) {
+					rerunFlag = false;
+					LOG.info("Clearing the re-run flag after a successful re-run");
+				}
 			}
 
 			private void taskComplete(int mcreatorGradleStatus) {
 				append("Task completed in " + TimeUtils.millisToLongDHMS(System.currentTimeMillis() - millis),
 						Color.gray, true);
+				append(" ");
 
 				if (taskSpecificListener != null)
 					taskSpecificListener.onTaskFinished(new GradleTaskResult("", mcreatorGradleStatus));
 
-				stateListeners
-						.forEach(listener -> listener.taskFinished(new GradleTaskResult("", mcreatorGradleStatus)));
+				stateListeners.forEach(
+						listener -> listener.taskFinished(new GradleTaskResult("", mcreatorGradleStatus)));
 
 				// reload mods view to display errors
 				ref.mv.updateMods();
@@ -558,8 +636,8 @@ public class GradleConsole extends JPanel {
 						c2 = new Color(0x7CD48B);
 					else if (bracketText.contains("main/"))
 						c2 = new Color(0xAAB490);
-					else if (bracketText.contains("LaunchWrapper]") || bracketText.contains("FML]") || bracketText
-							.contains("modloading-worker"))
+					else if (bracketText.contains("LaunchWrapper]") || bracketText.contains("FML]")
+							|| bracketText.contains("modloading-worker"))
 						c2 = new Color(0xB5D7C3);
 
 					// handle log levels

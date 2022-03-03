@@ -19,7 +19,6 @@
 package net.mcreator.workspace;
 
 import net.mcreator.Launcher;
-import net.mcreator.element.BaseType;
 import net.mcreator.generator.Generator;
 import net.mcreator.generator.GeneratorConfiguration;
 import net.mcreator.generator.GeneratorFlavor;
@@ -34,9 +33,9 @@ import net.mcreator.workspace.misc.WorkspaceInfo;
 import net.mcreator.workspace.settings.WorkspaceSettings;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.swing.*;
 import java.awt.*;
 import java.io.Closeable;
@@ -52,11 +51,10 @@ public class Workspace implements Closeable, IGeneratorProvider {
 
 	private static final Logger LOG = LogManager.getLogger("Workspace");
 
-	private ConcurrentHashMap<BaseType, Integer> id_map = new ConcurrentHashMap<>();
 	private Set<ModElement> mod_elements = Collections.synchronizedSet(new LinkedHashSet<>(0));
 	private Set<VariableElement> variable_elements = Collections.synchronizedSet(new LinkedHashSet<>(0));
 	private Set<SoundElement> sound_elements = Collections.synchronizedSet(new LinkedHashSet<>(0));
-	private ConcurrentHashMap<String, ConcurrentHashMap<String, String>> language_map = new ConcurrentHashMap<String, ConcurrentHashMap<String, String>>() {{
+	private ConcurrentHashMap<String, ConcurrentHashMap<String, String>> language_map = new ConcurrentHashMap<>() {{
 		put("en_us", new ConcurrentHashMap<>());
 	}};
 
@@ -73,7 +71,7 @@ public class Workspace implements Closeable, IGeneratorProvider {
 	private transient boolean regenerateRequired = false;
 	private transient boolean failingGradleDependencies = false;
 
-	@NotNull private final transient WorkspaceInfo workspaceInfo;
+	@Nonnull private final transient WorkspaceInfo workspaceInfo;
 
 	private Workspace(WorkspaceSettings workspaceSettings) {
 		this();
@@ -98,12 +96,16 @@ public class Workspace implements Closeable, IGeneratorProvider {
 		markDirty();
 	}
 
+	/**
+	 * @return UNMODIFIABLE! list of mod elements
+	 */
 	public Collection<ModElement> getModElements() {
-		return mod_elements;
+		return Collections.unmodifiableSet(new LinkedHashSet<>(mod_elements));
 	}
 
 	public Collection<VariableElement> getVariableElements() {
-		return variable_elements;
+		// make sure that variable types are supported by generator
+		return variable_elements.stream().filter(e -> e.getType() != null).toList();
 	}
 
 	public Collection<SoundElement> getSoundElements() {
@@ -114,15 +116,11 @@ public class Workspace implements Closeable, IGeneratorProvider {
 		return language_map;
 	}
 
-	public ConcurrentHashMap<BaseType, Integer> getIDMap() {
-		return id_map;
-	}
-
 	public FolderElement getFoldersRoot() {
 		return foldersRoot;
 	}
 
-	@NotNull public WorkspaceInfo getWorkspaceInfo() {
+	@Nonnull public WorkspaceInfo getWorkspaceInfo() {
 		return workspaceInfo;
 	}
 
@@ -247,8 +245,8 @@ public class Workspace implements Closeable, IGeneratorProvider {
 
 			// after we don't need the definition anymore, remove actual files
 			new File(fileManager.getFolderManager().getModElementsDir(), element.getName() + ".mod.json").delete();
-			new File(fileManager.getFolderManager().getModElementPicturesCacheDir(), element.getName() + ".png")
-					.delete();
+			new File(fileManager.getFolderManager().getModElementPicturesCacheDir(),
+					element.getName() + ".png").delete();
 
 			// finally remove element form the list
 			mod_elements.remove(element);
@@ -267,19 +265,6 @@ public class Workspace implements Closeable, IGeneratorProvider {
 				.forEach(file -> new File(fileManager.getFolderManager().getSoundsDir(), file + ".ogg").delete());
 		sound_elements.remove(element);
 		markDirty();
-	}
-
-	public int getNextFreeIDAndIncrease(BaseType baseType) {
-		if (id_map.get(baseType) == null) {
-			id_map.put(baseType, 1);
-			markDirty();
-			return 1;
-		} else {
-			int free = id_map.get(baseType) + 1;
-			id_map.put(baseType, free);
-			markDirty();
-			return free;
-		}
 	}
 
 	public void setMCreatorVersion(long mcreatorVersion) {
@@ -347,8 +332,8 @@ public class Workspace implements Closeable, IGeneratorProvider {
 			if (modElement.getFolderPath() != null && !modElement.getFolderPath()
 					.equals(FolderElement.ROOT.getName())) {
 				if (!validPaths.contains(modElement.getFolderPath())) {
-					LOG.warn("Mod element: " + modElement.getName() + " has invalid path: " + modElement
-							.getFolderPath());
+					LOG.warn("Mod element: " + modElement.getName() + " has invalid path: "
+							+ modElement.getFolderPath());
 					// reset orphaned elements to root
 					modElement.setParentFolder(null);
 				}
@@ -391,7 +376,7 @@ public class Workspace implements Closeable, IGeneratorProvider {
 		return retval;
 	}
 
-	@Override public @NotNull Workspace getWorkspace() {
+	@Override public @Nonnull Workspace getWorkspace() {
 		return this;
 	}
 
@@ -414,8 +399,8 @@ public class Workspace implements Closeable, IGeneratorProvider {
 					throw new UnsupportedGeneratorException(retval.getWorkspaceSettings().getCurrentGenerator());
 				} else {
 					String currentGenerator = retval.getWorkspaceSettings().getCurrentGenerator();
-					GeneratorFlavor currentFlavor = GeneratorFlavor
-							.valueOf(currentGenerator.split("-")[0].toUpperCase(Locale.ENGLISH));
+					GeneratorFlavor currentFlavor = GeneratorFlavor.valueOf(
+							currentGenerator.split("-")[0].toUpperCase(Locale.ENGLISH));
 
 					JOptionPane.showMessageDialog(ui,
 							"<html><b>This workspace uses unsupported generator type: " + currentGenerator
@@ -423,7 +408,7 @@ public class Workspace implements Closeable, IGeneratorProvider {
 							"Unsupported generator", JOptionPane.WARNING_MESSAGE);
 					GeneratorConfiguration generatorConfiguration = GeneratorSelector.getGeneratorSelector(ui,
 							GeneratorConfiguration.getRecommendedGeneratorForFlavor(Generator.GENERATOR_CACHE.values(),
-									currentFlavor), currentFlavor);
+									currentFlavor), currentFlavor, false);
 					if (generatorConfiguration != null) {
 						retval.getWorkspaceSettings().setCurrentGenerator(generatorConfiguration.getGeneratorName());
 
@@ -481,8 +466,8 @@ public class Workspace implements Closeable, IGeneratorProvider {
 		retval.generator = new Generator(retval);
 		retval.fileManager.saveWorkspaceDirectlyAndWait();
 		retval.getWorkspaceSettings().setWorkspace(retval);
-		LOG.info("Created new workspace with workspace file " + workspaceFile + ", modid: " + workspaceSettings
-				.getModID());
+		LOG.info("Created new workspace with workspace file " + workspaceFile + ", modid: "
+				+ workspaceSettings.getModID());
 		return retval;
 	}
 
@@ -496,7 +481,6 @@ public class Workspace implements Closeable, IGeneratorProvider {
 	}
 
 	public void loadStoredDataFrom(Workspace other) {
-		this.id_map = other.id_map;
 		this.mod_elements = other.mod_elements;
 		this.variable_elements = other.variable_elements;
 		this.sound_elements = other.sound_elements;

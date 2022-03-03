@@ -44,7 +44,6 @@ import java.io.File;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 public class WorkspacePanelModels extends JPanel implements IReloadableFilterable {
 
@@ -154,11 +153,9 @@ public class WorkspacePanelModels extends JPanel implements IReloadableFilterabl
 		del.addActionListener(e -> {
 			Model model = modelList.getSelectedValue();
 			if (model != null) {
-				Object[] options = { "Yes", "No" };
-				int n = JOptionPane.showOptionDialog(workspacePanel.getMcreator(),
-						L10N.t("workspace.3dmodels.delete_confirm_message"),
-						L10N.t("workspace.3dmodels.delete_confirm_title"), JOptionPane.YES_NO_CANCEL_OPTION,
-						JOptionPane.QUESTION_MESSAGE, null, options, options[1]);
+				int n = JOptionPane.showConfirmDialog(workspacePanel.getMcreator(),
+						L10N.t("workspace.3dmodels.delete_confirm_message"), L10N.t("common.confirmation"),
+						JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null);
 
 				if (n == 0) {
 					Arrays.stream(model.getFiles()).forEach(File::delete);
@@ -202,7 +199,7 @@ public class WorkspacePanelModels extends JPanel implements IReloadableFilterabl
 					AtomicInteger i = new AtomicInteger();
 					// this model might be in use, we need to regenerate code of mobs
 					workspacePanel.getMcreator().getWorkspace().getModElements().forEach(e -> {
-						if (e.getType() == ModElementType.MOB && !e.isCodeLocked()) {
+						if (e.getType() == ModElementType.LIVINGENTITY && !e.isCodeLocked()) {
 							GeneratableElement generatableElement = e.getGeneratableElement();
 							if (generatableElement != null) {
 								// generate mod element
@@ -219,7 +216,8 @@ public class WorkspacePanelModels extends JPanel implements IReloadableFilterabl
 					p0.ok();
 					dial.refreshDisplay();
 
-					ProgressDialog.ProgressUnit p2 = new ProgressDialog.ProgressUnit("Rebuilding workspace");
+					ProgressDialog.ProgressUnit p2 = new ProgressDialog.ProgressUnit(
+							L10N.t("workspace.3dmodels.rebuilding_workspace"));
 					dial.addProgress(p2);
 					workspacePanel.getMcreator().actionRegistry.buildWorkspace.doAction();
 					p2.ok();
@@ -241,8 +239,8 @@ public class WorkspacePanelModels extends JPanel implements IReloadableFilterabl
 		Model model = modelList.getSelectedValue();
 		Map<String, TexturedModel.TextureMapping> textureMappingMap = TexturedModel.getTextureMappingsForModel(model);
 		if (textureMappingMap != null) {
-			textureMappingMap = new TextureMappingDialog(textureMappingMap)
-					.openMappingDialog(workspacePanel.getMcreator(), null, model.getType() == Model.Type.JSON);
+			textureMappingMap = new TextureMappingDialog(textureMappingMap).openMappingDialog(
+					workspacePanel.getMcreator(), null, model.getType() == Model.Type.JSON);
 			if (textureMappingMap != null) {
 				String data = TexturedModel.getJSONForTextureMapping(textureMappingMap);
 				FileIO.writeStringToFile(data, new File(workspacePanel.getMcreator().getFolderManager().getModelsDir(),
@@ -283,7 +281,7 @@ public class WorkspacePanelModels extends JPanel implements IReloadableFilterabl
 		}
 
 		@Override public Model getElementAt(int index) {
-			if (index < filterItems.size())
+			if (!filterItems.isEmpty() && index < filterItems.size())
 				return filterItems.get(index);
 			else
 				return null;
@@ -318,7 +316,7 @@ public class WorkspacePanelModels extends JPanel implements IReloadableFilterabl
 			filterItems.addAll(items.stream().filter(Objects::nonNull).filter(item ->
 					(item.getReadableName().toLowerCase(Locale.ENGLISH).contains(term.toLowerCase(Locale.ENGLISH)))
 							|| (item.getType().name().toLowerCase(Locale.ENGLISH)
-							.contains(term.toLowerCase(Locale.ENGLISH)))).collect(Collectors.toList()));
+							.contains(term.toLowerCase(Locale.ENGLISH)))).toList());
 
 			if (workspacePanel.sortName.isSelected()) {
 				filterItems.sort(Comparator.comparing(Model::getReadableName));

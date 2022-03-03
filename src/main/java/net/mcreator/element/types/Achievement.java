@@ -28,8 +28,8 @@ import net.mcreator.generator.blockly.ProceduralBlockCodeGenerator;
 import net.mcreator.generator.template.IAdditionalTemplateDataProvider;
 import net.mcreator.minecraft.MinecraftImageGenerator;
 import net.mcreator.workspace.elements.ModElement;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
@@ -62,21 +62,26 @@ import java.util.List;
 		super(element);
 	}
 
+	public boolean hasRewards() {
+		return rewardXP > 0 || (rewardLoot != null && !rewardLoot.isEmpty()) || (rewardRecipes != null
+				&& !rewardRecipes.isEmpty()) || (rewardFunction != null && !rewardFunction.equals("No function"));
+	}
+
 	@Override public BufferedImage generateModElementPicture() {
-		return MinecraftImageGenerator.Preview
-				.generateAchievementPreviewPicture(getModElement().getWorkspace(), achievementIcon, achievementName);
+		return MinecraftImageGenerator.Preview.generateAchievementPreviewPicture(getModElement().getWorkspace(),
+				achievementIcon, achievementName);
 	}
 
 	@Override public @Nullable IAdditionalTemplateDataProvider getAdditionalTemplateData() {
 		return additionalData -> {
 			BlocklyBlockCodeGenerator blocklyBlockCodeGenerator = new BlocklyBlockCodeGenerator(
 					BlocklyLoader.INSTANCE.getJSONTriggerLoader().getDefinedBlocks(),
-					this.getModElement().getGenerator().getJSONTriggerGenerator(), additionalData)
-					.setTemplateExtension("json");
+					this.getModElement().getGenerator().getTemplateGeneratorFromName("jsontriggers"),
+					additionalData).setTemplateExtension("json");
 
 			// load blocklytojava with custom generators loaded
 			BlocklyToJSONTrigger blocklyToJSONTrigger = new BlocklyToJSONTrigger(this.getModElement().getWorkspace(),
-					this.triggerxml, this.getModElement().getGenerator().getJSONTriggerGenerator(),
+					this.triggerxml, this.getModElement().getGenerator().getTemplateGeneratorFromName("jsontriggers"),
 					new ProceduralBlockCodeGenerator(blocklyBlockCodeGenerator));
 
 			String triggerCode = blocklyToJSONTrigger.getGeneratedCode();

@@ -22,8 +22,8 @@ import com.google.gson.*;
 import com.google.gson.annotations.JsonAdapter;
 import net.mcreator.ui.wysiwyg.WYSIWYGEditor;
 import net.mcreator.workspace.Workspace;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.awt.*;
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -39,17 +39,18 @@ import java.util.stream.Collectors;
 
 	public transient UUID uuid;
 
-	private static transient final Map<String, Class<? extends GUIComponent>> typeMappings = new HashMap<String, Class<? extends GUIComponent>>() {{
+	private static transient final Map<String, Class<? extends GUIComponent>> typeMappings = new HashMap<>() {{
 		put("button", Button.class);
 		put("image", Image.class);
 		put("inputslot", InputSlot.class);
 		put("outputslot", OutputSlot.class);
 		put("label", Label.class);
 		put("textfield", TextField.class);
+		put("checkbox", Checkbox.class);
 	}};
 
-	private static transient final Map<Class<? extends GUIComponent>, String> typeMappingsReverse = typeMappings
-			.entrySet().stream().collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+	private static transient final Map<Class<? extends GUIComponent>, String> typeMappingsReverse = typeMappings.entrySet()
+			.stream().collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
 
 	GUIComponent() {
 		uuid = UUID.randomUUID();
@@ -78,7 +79,7 @@ import java.util.stream.Collectors;
 		return y;
 	}
 
-	@Override public final int compareTo(@NotNull GUIComponent o) {
+	@Override public final int compareTo(@Nonnull GUIComponent o) {
 		return o.getWeight() - getWeight();
 	}
 
@@ -104,8 +105,8 @@ import java.util.stream.Collectors;
 				JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
 			String elementType = jsonElement.getAsJsonObject().get("type").getAsString();
 
-			GUIComponent component = jsonDeserializationContext
-					.deserialize(jsonElement.getAsJsonObject().get("data"), typeMappings.get(elementType));
+			GUIComponent component = jsonDeserializationContext.deserialize(jsonElement.getAsJsonObject().get("data"),
+					typeMappings.get(elementType));
 			component.uuid = UUID.randomUUID(); // init UUID for deserialized component
 			return component;
 		}

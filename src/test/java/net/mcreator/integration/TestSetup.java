@@ -20,15 +20,24 @@ package net.mcreator.integration;
 
 import net.mcreator.Launcher;
 import net.mcreator.blockly.data.BlocklyLoader;
+import net.mcreator.element.ModElementTypeLoader;
 import net.mcreator.generator.Generator;
 import net.mcreator.generator.GeneratorConfiguration;
 import net.mcreator.minecraft.DataListLoader;
 import net.mcreator.minecraft.api.ModAPIManager;
 import net.mcreator.plugin.PluginLoader;
+import net.mcreator.themes.ThemeLoader;
+import net.mcreator.ui.MCreatorApplication;
+import net.mcreator.ui.blockly.WebConsoleListener;
+import net.mcreator.ui.help.HelpLoader;
+import net.mcreator.ui.init.BlocklyJavaScriptsLoader;
+import net.mcreator.ui.init.EntityAnimationsLoader;
 import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.init.TiledImageCache;
 import net.mcreator.ui.laf.MCreatorLookAndFeel;
 import net.mcreator.util.MCreatorVersionNumber;
+import net.mcreator.util.TerribleModuleHacks;
+import net.mcreator.workspace.elements.VariableTypeLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -48,21 +57,40 @@ public class TestSetup {
 		if (already)
 			return;
 
+		TerribleModuleHacks.openAllUnnamed();
+		TerribleModuleHacks.openMCreatorRequirements();
+
+		WebConsoleListener.registerLogger(LOG);
+
+		MCreatorApplication.isInternet = MCreatorApplication.WEB_API.initAPI();
+
+		// print version of Java
+		LOG.info("Java version: " + System.getProperty("java.version") + ", VM: " + System.getProperty("java.vm.name")
+				+ ", vendor: " + System.getProperty("java.vendor"));
+		LOG.info("Current JAVA_HOME for running instance: " + System.getProperty("java.home"));
+
 		Properties conf = new Properties();
 		conf.load(Launcher.class.getResourceAsStream("/mcreator.conf"));
 		Launcher.version = new MCreatorVersionNumber(conf);
 
-		// init theme
+		// load plugins
+		// We begin by loading plugins, so every image can be changed
+		PluginLoader.initInstance();
+
+		// We load UI themes now as theme plugins are loaded at this point
+		ThemeLoader.initUIThemes();
+
+		// init UI theme
 		try {
 			UIManager.setLookAndFeel(new MCreatorLookAndFeel());
 		} catch (UnsupportedLookAndFeelException e) {
 			LOG.error("Failed to set look and feel: " + e.getMessage());
 		}
 
-		// load plugins
-		PluginLoader.initInstance();
-
 		DataListLoader.preloadCache();
+
+		// preload help entries cache
+		HelpLoader.preloadCache();
 
 		// load translations after plugins are loaded
 		L10N.initTranslations();
@@ -74,8 +102,20 @@ public class TestSetup {
 		// load apis defined by plugins after plugins are loaded
 		ModAPIManager.initAPIs();
 
+		// load variable elements
+		VariableTypeLoader.loadVariableTypes();
+
+		// load JS files for Blockly
+		BlocklyJavaScriptsLoader.init();
+
 		// blockly mod elements need blockly blocks loaded
 		BlocklyLoader.init();
+
+		// load entity animations for the Java Model animation editor
+		EntityAnimationsLoader.init();
+
+		// register mod element types
+		ModElementTypeLoader.loadModElements();
 
 		// load generator configurations
 		Set<String> fileNames = PluginLoader.INSTANCE.getResources(Pattern.compile("generator\\.yaml"));

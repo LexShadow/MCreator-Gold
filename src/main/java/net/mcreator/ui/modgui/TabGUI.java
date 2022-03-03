@@ -34,8 +34,8 @@ import net.mcreator.ui.validation.validators.MCItemHolderValidator;
 import net.mcreator.ui.validation.validators.TextFieldValidator;
 import net.mcreator.util.StringUtils;
 import net.mcreator.workspace.elements.ModElement;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
@@ -70,8 +70,8 @@ public class TabGUI extends ModElementGUI<Tab> {
 		selp.add(HelpUtils.wrapWithHelpButton(this.withEntry("tab/icon"), L10N.label("elementgui.tab.icon")));
 		selp.add(PanelUtils.join(FlowLayout.LEFT, icon));
 
-		selp.add(HelpUtils
-				.wrapWithHelpButton(this.withEntry("tab/search_bar"), L10N.label("elementgui.tab.search_bar")));
+		selp.add(HelpUtils.wrapWithHelpButton(this.withEntry("tab/search_bar"),
+				L10N.label("elementgui.tab.search_bar")));
 		selp.add(showSearch);
 
 		showSearch.setOpaque(false);
@@ -127,7 +127,7 @@ public class TabGUI extends ModElementGUI<Tab> {
 		return tab;
 	}
 
-	@Override public @Nullable URI getContextURL() throws URISyntaxException {
+	@Override public @Nullable URI contextURL() throws URISyntaxException {
 		return new URI(MCreatorApplication.SERVER_DOMAIN + "/wiki/how-make-creative-inventory-tab");
 	}
 

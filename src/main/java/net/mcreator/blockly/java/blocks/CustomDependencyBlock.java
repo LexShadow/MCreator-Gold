@@ -22,46 +22,43 @@ import net.mcreator.blockly.BlocklyCompileNote;
 import net.mcreator.blockly.BlocklyToCode;
 import net.mcreator.blockly.IBlockGenerator;
 import net.mcreator.blockly.data.Dependency;
+import net.mcreator.ui.init.L10N;
 import net.mcreator.util.XMLUtil;
+import net.mcreator.workspace.elements.VariableType;
+import net.mcreator.workspace.elements.VariableTypeLoader;
+import org.apache.commons.lang3.StringUtils;
 import org.w3c.dom.Element;
 
 public class CustomDependencyBlock implements IBlockGenerator {
+	private final String[] names;
+
+	public CustomDependencyBlock() {
+		names = VariableTypeLoader.INSTANCE.getAllVariableTypes().stream().map(VariableType::getName)
+				.map(s -> s = "custom_dependency_" + s).toArray(String[]::new);
+	}
 
 	@Override public void generateBlock(BlocklyToCode master, Element block) {
 		Element element = XMLUtil.getFirstChildrenWithName(block, "field");
 		if (element != null && element.getTextContent() != null && !element.getTextContent().equals("")) {
 			String depname = element.getTextContent();
-			String deptype = null;
-			String blocktype = block.getAttribute("type");
-			switch (blocktype) {
-			case "custom_dependency_logic":
-				deptype = "boolean";
-				break;
-			case "custom_dependency_number":
-				deptype = "number";
-				break;
-			case "custom_dependency_text":
-				deptype = "string";
-				break;
-			case "custom_dependency_itemstack":
-				deptype = "itemstack";
-				break;
-			}
+
+			String deptype = StringUtils.removeStart(block.getAttribute("type"), "custom_dependency_");
 			master.addDependency(new Dependency(depname, deptype));
 
-			if (deptype != null && deptype.equals("itemstack"))
+			if (deptype.equalsIgnoreCase("itemstack"))
 				master.append("/*@ItemStack*/");
+			else if (deptype.equalsIgnoreCase("blockstate"))
+				master.append("/*@BlockState*/");
 
 			master.append("(").append(element.getTextContent()).append(")");
 		} else {
-			master.addCompileNote(new BlocklyCompileNote(BlocklyCompileNote.Type.ERROR,
-					"Custom dependency block is not well defined!"));
+			master.addCompileNote(
+					new BlocklyCompileNote(BlocklyCompileNote.Type.ERROR, L10N.t("blockly.errors.custom_dependency")));
 		}
 	}
 
 	@Override public String[] getSupportedBlocks() {
-		return new String[] { "custom_dependency_logic", "custom_dependency_number", "custom_dependency_text",
-				"custom_dependency_itemstack" };
+		return names;
 	}
 
 	@Override public BlockType getBlockType() {

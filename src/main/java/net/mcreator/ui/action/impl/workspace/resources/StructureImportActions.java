@@ -28,7 +28,7 @@ import net.mcreator.ui.action.BasicAction;
 import net.mcreator.ui.dialogs.FileDialogs;
 import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.modgui.ModElementGUI;
-import org.apache.commons.io.FilenameUtils;
+import net.mcreator.util.FilenameUtilsPatched;
 
 import javax.swing.*;
 import java.io.File;
@@ -70,7 +70,7 @@ public class StructureImportActions {
 						File[] structures = new File(save, "/structures/").listFiles();
 						for (File structure : structures != null ? structures : new File[0]) {
 							mcstucts.add(new Structure(
-									save.getName() + ": " + FilenameUtils.removeExtension(structure.getName()),
+									save.getName() + ": " + FilenameUtilsPatched.removeExtension(structure.getName()),
 									structure));
 						}
 						// support >1.13
@@ -78,9 +78,8 @@ public class StructureImportActions {
 						for (File generatedsect : generated != null ? generated : new File[0]) {
 							structures = new File(generatedsect, "/structures/").listFiles();
 							for (File structure : structures != null ? structures : new File[0]) {
-								mcstucts.add(new Structure(
-										save.getName() + ": " + FilenameUtils.removeExtension(structure.getName()),
-										structure));
+								mcstucts.add(new Structure(save.getName() + ": " + FilenameUtilsPatched.removeExtension(
+										structure.getName()), structure));
 							}
 						}
 					}
@@ -91,7 +90,7 @@ public class StructureImportActions {
 						L10N.t("dialog.workspace.resources.import_structure_from_minecraft.title"),
 						JOptionPane.QUESTION_MESSAGE, null, mcsturcturesarray, "");
 				if (selected != null) {
-					File sch = selected.getFile();
+					File sch = selected.file();
 					if (sch.isFile()) {
 						FileIO.copyFile(sch,
 								new File(actionRegistry.getMCreator().getFolderManager().getStructuresDir(),
@@ -100,9 +99,9 @@ public class StructureImportActions {
 					}
 				}
 				actionRegistry.getMCreator().mv.resourcesPan.workspacePanelStructures.reloadElements();
-				if (actionRegistry.getMCreator().mcreatorTabs.getCurrentTab().getContent() instanceof ModElementGUI)
-					((ModElementGUI) actionRegistry.getMCreator().mcreatorTabs.getCurrentTab().getContent())
-							.reloadDataLists();
+				if (actionRegistry.getMCreator().mcreatorTabs.getCurrentTab()
+						.getContent() instanceof ModElementGUI<?> modElementGUI)
+					modElementGUI.reloadDataLists();
 			});
 		}
 
@@ -112,19 +111,7 @@ public class StructureImportActions {
 		}
 	}
 
-	private static class Structure {
-
-		private final String name;
-		private final File file;
-
-		Structure(String name, File file) {
-			this.name = name;
-			this.file = file;
-		}
-
-		public File getFile() {
-			return file;
-		}
+	private record Structure(String name, File file) {
 
 		@Override public String toString() {
 			return name;

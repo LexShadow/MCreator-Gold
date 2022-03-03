@@ -39,7 +39,6 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.util.List;
 import java.util.*;
-import java.util.stream.Collectors;
 
 class WorkspacePanelScreenshots extends JPanel implements IReloadableFilterable {
 
@@ -114,9 +113,9 @@ class WorkspacePanelScreenshots extends JPanel implements IReloadableFilterable 
 	private void useSelectedAsBackgrounds() {
 		modelList.getSelectedValuesList().forEach(
 				f -> FileIO.copyFile(f, new File(UserFolderManager.getFileFromUserFolder("backgrounds"), f.getName())));
-		JOptionPane
-				.showMessageDialog(workspacePanel.getMcreator(), L10N.t("workspace.screenshots.use_background_message"),
-						L10N.t("workspace.screenshots.action_complete"), JOptionPane.INFORMATION_MESSAGE);
+		JOptionPane.showMessageDialog(workspacePanel.getMcreator(),
+				L10N.t("workspace.screenshots.use_background_message"), L10N.t("workspace.screenshots.action_complete"),
+				JOptionPane.INFORMATION_MESSAGE);
 	}
 
 	private void exportSelectedScreenshots() {
@@ -131,8 +130,8 @@ class WorkspacePanelScreenshots extends JPanel implements IReloadableFilterable 
 		List<File> selected = modelList.getSelectedValuesList();
 
 		listmodel.removeAllElements();
-		File[] screenshots = new File(workspacePanel.getMcreator().getWorkspaceFolder(), "run/screenshots/")
-				.listFiles();
+		File[] screenshots = new File(workspacePanel.getMcreator().getWorkspaceFolder(),
+				"run/screenshots/").listFiles();
 		if (screenshots != null)
 			Arrays.stream(screenshots).forEach(listmodel::addElement);
 
@@ -197,7 +196,7 @@ class WorkspacePanelScreenshots extends JPanel implements IReloadableFilterable 
 			String term = workspacePanel.search.getText();
 			filterItems.addAll(items.stream().filter(Objects::nonNull)
 					.filter(item -> item.getName().toLowerCase(Locale.ENGLISH)
-							.contains(term.toLowerCase(Locale.ENGLISH))).collect(Collectors.toList()));
+							.contains(term.toLowerCase(Locale.ENGLISH))).toList());
 
 			if (workspacePanel.sortName.isSelected()) {
 				filterItems.sort(Comparator.comparing(File::getName));

@@ -23,32 +23,32 @@ import net.mcreator.blockly.BlocklyToCode;
 import net.mcreator.blockly.IBlockGenerator;
 import net.mcreator.blockly.java.BlocklyToProcedure;
 import net.mcreator.generator.template.TemplateGeneratorException;
+import net.mcreator.ui.init.L10N;
 import net.mcreator.util.XMLUtil;
-import net.mcreator.workspace.elements.VariableElementType;
+import net.mcreator.workspace.elements.VariableType;
+import net.mcreator.workspace.elements.VariableTypeLoader;
+import org.apache.commons.lang3.StringUtils;
 import org.w3c.dom.Element;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class ReturnBlock implements IBlockGenerator {
+	private final String[] names;
+
+	public ReturnBlock() {
+		names = VariableTypeLoader.INSTANCE.getAllVariableTypes().stream().map(VariableType::getName)
+				.map(s -> s = "return_" + s).toArray(String[]::new);
+	}
 
 	@Override public void generateBlock(BlocklyToCode master, Element block) throws TemplateGeneratorException {
-		String type = block.getAttribute("type");
-		VariableElementType returnType = null;
+		String type = StringUtils.removeStart(block.getAttribute("type"), "return_");
+		VariableType returnType = VariableTypeLoader.INSTANCE.fromName(type);
 
-		switch (type) {
-		case "return_logic":
-			returnType = VariableElementType.LOGIC;
-			break;
-		case "return_number":
-			returnType = VariableElementType.NUMBER;
-			break;
-		case "return_text":
-			returnType = VariableElementType.STRING;
-			break;
-		case "return_itemstack":
-			returnType = VariableElementType.ITEMSTACK;
-			break;
+		if (!master.getStatementInputsMatching(si -> true).isEmpty()) {
+			master.addCompileNote(new BlocklyCompileNote(BlocklyCompileNote.Type.ERROR,
+					L10N.t("blockly.errors.retval.inside_statement", type)));
+			return;
 		}
 
 		Element value = XMLUtil.getFirstChildrenWithName(block, "value");
@@ -56,7 +56,7 @@ public class ReturnBlock implements IBlockGenerator {
 			if (((BlocklyToProcedure) master).getReturnType() != null) {
 				if (((BlocklyToProcedure) master).getReturnType() != returnType) {
 					master.getCompileNotes().add(new BlocklyCompileNote(BlocklyCompileNote.Type.ERROR,
-							"Only one return type can be used in a single procedure."));
+							L10N.t("blockly.errors.retval.one_retval_block")));
 				}
 			} else {
 				((BlocklyToProcedure) master).setReturnType(returnType);
@@ -72,13 +72,13 @@ public class ReturnBlock implements IBlockGenerator {
 				master.append(code);
 			}
 		} else {
-			master.getCompileNotes()
-					.add(new BlocklyCompileNote(BlocklyCompileNote.Type.WARNING, "Skipped empty return block."));
+			master.getCompileNotes().add(new BlocklyCompileNote(BlocklyCompileNote.Type.WARNING,
+					L10N.t("blockly.warnings.retval.empty")));
 		}
 	}
 
 	@Override public String[] getSupportedBlocks() {
-		return new String[] { "return_logic", "return_number", "return_text", "return_itemstack" };
+		return names;
 	}
 
 	@Override public BlockType getBlockType() {

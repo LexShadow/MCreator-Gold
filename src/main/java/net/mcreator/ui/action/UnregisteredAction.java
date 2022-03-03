@@ -20,18 +20,18 @@ package net.mcreator.ui.action;
 
 import net.mcreator.util.image.EmptyIcon;
 import net.mcreator.util.image.ImageUtils;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-public class UnregisteredAction extends AbstractAction implements Comparable {
+public class UnregisteredAction extends AbstractAction implements Comparable<UnregisteredAction> {
 
 	protected static final ImageIcon EMPTY = new EmptyIcon.ImageIcon(16, 16);
 
 	private final String name;
-	private final ActionListener actionListener;
+	private ActionListener actionListener;
 
 	public UnregisteredAction(String name, ActionListener listener) {
 		putValue(NAME, name);
@@ -43,6 +43,10 @@ public class UnregisteredAction extends AbstractAction implements Comparable {
 
 	public String getName() {
 		return name;
+	}
+
+	public void setActionListener(ActionListener actionListener) {
+		this.actionListener = actionListener;
 	}
 
 	public UnregisteredAction setIcon(ImageIcon icon) {
@@ -87,9 +91,7 @@ public class UnregisteredAction extends AbstractAction implements Comparable {
 		this.actionPerformed(new ActionEvent(this, 0, (String) getValue(NAME)));
 	}
 
-	@Override public int compareTo(@NotNull Object o) {
-		if (o instanceof UnregisteredAction)
-			return this.name.compareTo(((UnregisteredAction) o).name);
-		return 0;
+	@Override public int compareTo(@Nonnull UnregisteredAction o) {
+		return this.name.compareTo(o.name);
 	}
 }

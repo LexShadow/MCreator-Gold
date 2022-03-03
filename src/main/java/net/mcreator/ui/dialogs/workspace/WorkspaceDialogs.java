@@ -22,7 +22,7 @@ import net.mcreator.generator.Generator;
 import net.mcreator.generator.GeneratorConfiguration;
 import net.mcreator.generator.GeneratorFlavor;
 import net.mcreator.java.JavaConventions;
-import net.mcreator.minecraft.api.ModAPI;
+import net.mcreator.minecraft.api.ModAPIImplementation;
 import net.mcreator.minecraft.api.ModAPIManager;
 import net.mcreator.ui.MCreator;
 import net.mcreator.ui.MCreatorApplication;
@@ -39,12 +39,12 @@ import net.mcreator.ui.validation.component.VTextField;
 import net.mcreator.ui.validation.validators.RegistryNameValidator;
 import net.mcreator.ui.validation.validators.TextFieldValidatorJSON;
 import net.mcreator.util.DesktopUtils;
+import net.mcreator.util.FilenameUtilsPatched;
 import net.mcreator.workspace.Workspace;
 import net.mcreator.workspace.settings.WorkspaceSettings;
 import net.mcreator.workspace.settings.WorkspaceSettingsChange;
-import org.apache.commons.io.FilenameUtils;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicComboBoxUI;
 import javax.swing.text.AbstractDocument;
@@ -283,7 +283,9 @@ public class WorkspaceDialogs {
 			license.setEditable(true);
 			license.setPrototypeDisplayValue("XXXXXXXXXXXXXXXXXX");
 
-			modID.setValidator(new RegistryNameValidator(modID, "Mod ID").setMaxLength(32));
+			modID.setValidator(
+					new RegistryNameValidator(modID, L10N.t("dialog.workspace.settings.workspace_modid")).setMaxLength(
+							32));
 
 			modName.enableRealtimeValidation();
 			modID.enableRealtimeValidation();
@@ -299,12 +301,12 @@ public class WorkspaceDialogs {
 			validationGroup.addValidationElement(websiteURL);
 			validationGroup.addValidationElement(author);
 
-			modPicture.addItem("No picture / default picture");
+			modPicture.addItem(L10N.t("dialog.workspace.settings.workspace_nopic_default"));
 			if (workspace != null) {
 				List<File> other = workspace.getFolderManager().getOtherTexturesList();
 				for (File element : other) {
 					if (element.getName().endsWith(".png"))
-						modPicture.addItem(FilenameUtils.removeExtension(element.getName()));
+						modPicture.addItem(FilenameUtilsPatched.removeExtension(element.getName()));
 				}
 			}
 
@@ -331,22 +333,20 @@ public class WorkspaceDialogs {
 			JButton selectGenerator = new JButton(UIRES.get("18px.edit"));
 			selectGenerator.setMargin(new Insets(4, 4, 4, 4));
 			selectGenerator.addActionListener(e -> {
-				GeneratorConfiguration gc = GeneratorSelector
-						.getGeneratorSelector(parent, (GeneratorConfiguration) generator.getSelectedItem(),
-								workspace != null ?
-										workspace.getGeneratorConfiguration().getGeneratorFlavor() :
-										flavorFilter);
+				GeneratorConfiguration gc = GeneratorSelector.getGeneratorSelector(parent,
+						(GeneratorConfiguration) generator.getSelectedItem(),
+						workspace != null ? workspace.getGeneratorConfiguration().getGeneratorFlavor() : flavorFilter,
+						workspace == null);
 				if (gc != null)
 					generator.setSelectedItem(gc);
 			});
 
 			generator.addMouseListener(new MouseAdapter() {
 				@Override public void mouseClicked(MouseEvent mouseEvent) {
-					GeneratorConfiguration gc = GeneratorSelector
-							.getGeneratorSelector(parent, (GeneratorConfiguration) generator.getSelectedItem(),
-									workspace != null ?
-											workspace.getGeneratorConfiguration().getGeneratorFlavor() :
-											flavorFilter);
+					GeneratorConfiguration gc = GeneratorSelector.getGeneratorSelector(parent,
+							(GeneratorConfiguration) generator.getSelectedItem(), workspace != null ?
+									workspace.getGeneratorConfiguration().getGeneratorFlavor() :
+									flavorFilter, workspace == null);
 					if (gc != null)
 						generator.setSelectedItem(gc);
 				}
@@ -370,8 +370,8 @@ public class WorkspaceDialogs {
 			_basicSettings.add(new JEmptyBox(5, 15));
 
 			JPanel descriptionSettings = new JPanel(new GridLayout(workspace != null ? 7 : 2, 2, 5, 2));
-			descriptionSettings.setBorder(BorderFactory
-					.createTitledBorder(BorderFactory.createLineBorder(Color.gray, 1),
+			descriptionSettings.setBorder(
+					BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.gray, 1),
 							L10N.t("dialog.workspace_settings.section.details")));
 			_basicSettings.add(descriptionSettings);
 			descriptionSettings.add(L10N.label("dialog.workspace_settings.version"));
@@ -407,14 +407,14 @@ public class WorkspaceDialogs {
 				String text = packageName.getText();
 				if (text.length() == 0)
 					return new Validator.ValidationResult(Validator.ValidationResultType.ERROR,
-							"Package name can't be empty");
+							L10N.t("dialog.workspace.settings.workspace_package_empty"));
 				if (text.startsWith(".")) {
 					return new Validator.ValidationResult(Validator.ValidationResultType.ERROR,
-							"Package name can't start with a dot");
+							L10N.t("dialog.workspace.settings.workspace_package_startdot"));
 				}
 				if (text.endsWith(".")) {
 					return new Validator.ValidationResult(Validator.ValidationResultType.ERROR,
-							"Package name can't end with a dot");
+							L10N.t("dialog.workspace.settings.workspace_package_enddot"));
 				}
 				char[] chars = text.toCharArray();
 				boolean valid = true;
@@ -432,11 +432,11 @@ public class WorkspaceDialogs {
 				}
 				if (!valid)
 					return new Validator.ValidationResult(Validator.ValidationResultType.ERROR,
-							"Package name can only contain EN letters, numbers, underscore and dots.");
+							L10N.t("dialog.workspace.settings.workspace_package_pattern"));
 
 				if (text.matches(".*\\d+.*"))
 					return new Validator.ValidationResult(Validator.ValidationResultType.WARNING,
-							"Avoid using numbers in package names");
+							L10N.t("dialog.workspace.settings.workspace_package_avoid_numbers"));
 
 				return Validator.ValidationResult.PASSED;
 			});
@@ -452,14 +452,14 @@ public class WorkspaceDialogs {
 				JPanel apiList = new JPanel();
 				apiList.setLayout(new BoxLayout(apiList, BoxLayout.PAGE_AXIS));
 
-				List<ModAPI.Implementation> apisSupported = ModAPIManager
-						.getModAPIsForGenerator(workspace.getGenerator().getGeneratorName());
-				for (ModAPI.Implementation api : apisSupported) {
+				List<ModAPIImplementation> apisSupported = ModAPIManager.getModAPIsForGenerator(
+						workspace.getGenerator().getGeneratorName());
+				for (ModAPIImplementation api : apisSupported) {
 					JCheckBox apiEnableBox = new JCheckBox();
-					apiEnableBox.setName(api.parent.id);
-					apiEnableBox.setText(api.parent.name);
+					apiEnableBox.setName(api.parent().id());
+					apiEnableBox.setText(api.parent().name());
 
-					if (api.parent.id.equals("mcreator_link")) {
+					if (api.parent().id().equals("mcreator_link")) {
 						apiList.add(PanelUtils.westAndCenterElement(
 								ComponentUtils.wrapWithInfoButton(apiEnableBox, "https://mcreator.net/link"),
 								new JLabel(UIRES.get("16px.link"))));
@@ -467,7 +467,7 @@ public class WorkspaceDialogs {
 						apiList.add(PanelUtils.join(FlowLayout.LEFT, apiEnableBox));
 					}
 
-					apis.put(api.parent.id, apiEnableBox);
+					apis.put(api.parent().id(), apiEnableBox);
 				}
 
 				apiSettings.add("West", apiList);
@@ -477,18 +477,18 @@ public class WorkspaceDialogs {
 				explorePlugins.addActionListener(
 						e -> DesktopUtils.browseSafe(MCreatorApplication.SERVER_DOMAIN + "/plugins"));
 
-				apiSettings.add("South", PanelUtils
-						.join(FlowLayout.LEFT, L10N.label("dialog.workspace_settings.plugins_tip"), explorePlugins));
+				apiSettings.add("South",
+						PanelUtils.join(FlowLayout.LEFT, L10N.label("dialog.workspace_settings.plugins_tip"),
+								explorePlugins));
 
 				_external_apis.add(new JEmptyBox(5, 15));
 				_external_apis.add(apiSettings);
 			}
 
-			JComponent forgeVersionCheckPan = PanelUtils
-					.westAndEastElement(L10N.label("dialog.workspace_settings.section.version_check"),
-							disableForgeVersionCheck);
-			forgeVersionCheckPan.setBorder(BorderFactory
-					.createTitledBorder(BorderFactory.createLineBorder(Color.gray, 1),
+			JComponent forgeVersionCheckPan = PanelUtils.westAndEastElement(
+					L10N.label("dialog.workspace_settings.section.version_check"), disableForgeVersionCheck);
+			forgeVersionCheckPan.setBorder(
+					BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.gray, 1),
 							L10N.t("dialog.workspace_settings.version_check")));
 			_advancedSettings.add(forgeVersionCheckPan);
 			_advancedSettings.add(new JEmptyBox(5, 15));
@@ -528,7 +528,7 @@ public class WorkspaceDialogs {
 				license.setSelectedItem(workspace.getWorkspaceSettings().getLicense());
 				websiteURL.setText(workspace.getWorkspaceSettings().getWebsiteURL());
 				modPicture.setSelectedItem(workspace.getWorkspaceSettings().getModPicture() == null ?
-						"No picture / default picture" :
+						L10N.t("dialog.workspace.settings.workspace_nopic_default") :
 						workspace.getWorkspaceSettings().getModPicture());
 				serverSideOnly.setSelected(workspace.getWorkspaceSettings().isServerSideOnly());
 				lockBaseModFiles.setSelected(workspace.getWorkspaceSettings().isLockBaseModFiles());
@@ -538,11 +538,11 @@ public class WorkspaceDialogs {
 				packageName.setText(workspace.getWorkspaceSettings().getModElementsPackage());
 
 				if (!workspace.getWorkspaceSettings().requiredMods.isEmpty())
-					requiredMods.setText(String.join(", ", workspace.getWorkspaceSettings().requiredMods).trim());
+					requiredMods.setText(String.join(",", workspace.getWorkspaceSettings().requiredMods).trim());
 				if (!workspace.getWorkspaceSettings().dependencies.isEmpty())
-					dependencies.setText(String.join(", ", workspace.getWorkspaceSettings().dependencies).trim());
+					dependencies.setText(String.join(",", workspace.getWorkspaceSettings().dependencies).trim());
 				if (!workspace.getWorkspaceSettings().dependants.isEmpty())
-					dependants.setText(String.join(", ", workspace.getWorkspaceSettings().dependants).trim());
+					dependants.setText(String.join(",", workspace.getWorkspaceSettings().dependants).trim());
 
 				for (String mcrdep : workspace.getWorkspaceSettings().getMCreatorDependenciesRaw()) {
 					JCheckBox box = apis.get(mcrdep);
@@ -565,7 +565,8 @@ public class WorkspaceDialogs {
 					license.getEditor().getItem().toString());
 			retVal.setWebsiteURL(websiteURL.getText().equals("") ? null : websiteURL.getText());
 			retVal.setCredits(credits.getText().equals("") ? null : credits.getText());
-			retVal.setModPicture(Objects.equals(modPicture.getSelectedItem(), "No picture / default picture") ?
+			retVal.setModPicture(Objects.equals(modPicture.getSelectedItem(),
+					L10N.t("dialog.workspace.settings.workspace_nopic_default")) ?
 					null :
 					(String) modPicture.getSelectedItem());
 			retVal.setModElementsPackage(packageName.getText().equals("") ? null : packageName.getText());
@@ -577,13 +578,14 @@ public class WorkspaceDialogs {
 					((GeneratorConfiguration) Objects.requireNonNull(generator.getSelectedItem())).getGeneratorName());
 
 			retVal.setRequiredMods(
-					Arrays.stream(requiredMods.getText().split(",")).filter(text -> !text.trim().equals(""))
+					Arrays.stream(requiredMods.getText().split(",")).map(String::trim).filter(text -> !text.equals(""))
 							.collect(Collectors.toSet()));
 			retVal.setDependencies(
-					Arrays.stream(dependencies.getText().split(",")).filter(text -> !text.trim().equals(""))
+					Arrays.stream(dependencies.getText().split(",")).map(String::trim).filter(text -> !text.equals(""))
 							.collect(Collectors.toSet()));
-			retVal.setDependants(Arrays.stream(dependants.getText().split(",")).filter(text -> !text.trim().equals(""))
-					.collect(Collectors.toSet()));
+			retVal.setDependants(
+					Arrays.stream(dependants.getText().split(",")).map(String::trim).filter(text -> !text.equals(""))
+							.collect(Collectors.toSet()));
 
 			Set<String> mcreatordeps = new HashSet<>();
 			for (JCheckBox box : apis.values()) {
@@ -618,9 +620,8 @@ public class WorkspaceDialogs {
 		}
 		stringBuilder.append("</ul>");
 		stringBuilder.append(L10N.t("dialog.workspace_settings.dialog.error"));
-		JOptionPane
-				.showMessageDialog(w, stringBuilder.toString(), L10N.t("dialog.workspace_settings.dialog.error.title"),
-						JOptionPane.ERROR_MESSAGE);
+		JOptionPane.showMessageDialog(w, stringBuilder.toString(),
+				L10N.t("dialog.workspace_settings.dialog.error.title"), JOptionPane.ERROR_MESSAGE);
 	}
 
 }

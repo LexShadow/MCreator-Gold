@@ -18,9 +18,11 @@
 
 package net.mcreator.element.types;
 
+import net.mcreator.element.BaseType;
 import net.mcreator.element.GeneratableElement;
 import net.mcreator.element.parts.Procedure;
 import net.mcreator.element.parts.*;
+import net.mcreator.element.types.interfaces.IBlock;
 import net.mcreator.element.types.interfaces.IBlockWithBoundingBox;
 import net.mcreator.element.types.interfaces.IItemWithModel;
 import net.mcreator.element.types.interfaces.ITabContainedElement;
@@ -28,16 +30,17 @@ import net.mcreator.util.image.ImageUtils;
 import net.mcreator.workspace.elements.ModElement;
 import net.mcreator.workspace.resources.Model;
 import net.mcreator.workspace.resources.TexturedModel;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unused") public class Plant extends GeneratableElement
-		implements IItemWithModel, ITabContainedElement, IBlockWithBoundingBox {
+		implements IBlock, IItemWithModel, ITabContainedElement, IBlockWithBoundingBox {
 
 	public int renderType;
 	public String texture;
@@ -53,6 +56,8 @@ import java.util.stream.Collectors;
 	public String plantType;
 
 	public String staticPlantGenerationType;
+	public String suspiciousStewEffect;
+	public int suspiciousStewDuration;
 
 	public String growapableSpawnType;
 	public int growapableMaxHeight;
@@ -70,7 +75,15 @@ import java.util.stream.Collectors;
 	public double resistance;
 	public int luminance;
 	public boolean unbreakable;
+
+	public boolean isCustomSoundType;
 	public StepSound soundOnStep;
+	public Sound breakSound;
+	public Sound stepSound;
+	public Sound placeSound;
+	public Sound hitSound;
+	public Sound fallSound;
+
 	public boolean useLootTableForDrops;
 	public MItemBlock customDrop;
 	public int dropAmount;
@@ -97,6 +110,7 @@ import java.util.stream.Collectors;
 	public List<String> spawnWorldTypes;
 	public List<BiomeEntry> restrictionBiomes;
 	public Procedure generateCondition;
+	public int patchSize;
 
 	public Procedure onBlockAdded;
 	public Procedure onNeighbourBlockChanges;
@@ -131,8 +145,12 @@ import java.util.stream.Collectors;
 		this.jumpFactor = 1.0;
 		this.speedFactor = 1.0;
 
+		this.suspiciousStewEffect = "SATURATION";
+		this.suspiciousStewDuration = 0;
+
 		this.staticPlantGenerationType = "Flower";
 		this.doublePlantGenerationType = "Flower";
+		this.patchSize = 64;
 
 		this.specialInfo = new ArrayList<>();
 		this.boundingBoxes = new ArrayList<>();
@@ -166,7 +184,23 @@ import java.util.stream.Collectors;
 		return !"No tint".equals(tintType);
 	}
 
-	@Override public @NotNull List<BoxEntry> getValidBoundingBoxes() {
+	@Override public @Nonnull List<BoxEntry> getValidBoundingBoxes() {
 		return boundingBoxes.stream().filter(BoxEntry::isNotEmpty).collect(Collectors.toList());
+	}
+
+	public boolean doesGenerateInWorld() {
+		return spawnWorldTypes.size() > 0;
+	}
+
+	@Override public Collection<BaseType> getBaseTypesProvided() {
+		List<BaseType> baseTypes = new ArrayList<>(List.of(BaseType.BLOCK, BaseType.ITEM));
+
+		if (doesGenerateInWorld())
+			baseTypes.add(BaseType.FEATURE);
+
+		if (hasTileEntity)
+			baseTypes.add(BaseType.BLOCKENTITY);
+
+		return baseTypes;
 	}
 }

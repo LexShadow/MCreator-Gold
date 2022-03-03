@@ -1,7 +1,8 @@
 [![MCreator](https://mcreator.net/image/brand/mcreator300s.png)](https://mcreator.net/)
 
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](https://github.com/MCreator/MCreator/blob/master/LICENSE.txt)
-[![Build](https://img.shields.io/travis/MCreator/MCreator?style=flat-square)](https://travis-ci.org/github/MCreator/MCreator)
+[![Build](https://img.shields.io/github/workflow/status/MCreator/MCreator/Build%20and%20test?style=flat-square)](https://github.com/MCreator/MCreator/actions/workflows/test.yml)
+[![Javadoc](https://img.shields.io/badge/java-doc-%44cc11?style=flat-square)](https://mcreator.github.io/MCreator)
 [![Download](https://img.shields.io/badge/Download-release-%2393c54b?style=flat-square)](https://mcreator.net/download)
 [![Donate](https://img.shields.io/badge/Donate-%E2%99%A1-%23ff7c00?style=flat-square)](https://mcreator.net/donate)
 # MCreator - Minecraft Mod Maker
@@ -50,6 +51,19 @@ MCreator is a trademark of Pylo. Custom distributions of this software may not i
 MCreator and Pylo brand files in this repository are not covered by the GPL-3.0 license.
 
 MCreator uses several third-party libraries and projects. License files, attributions, and credits for these projects are located in the `license` subdirectory.
+
+Some code generators use official Minecraft mappings. 
+The use of these mappings is covered under a license by Microsoft. You should
+be fully aware of this license and the fact your mod may use these mappings.
+At the time of writing, the license is:
+
+`© 2020 Microsoft Corporation. These mappings are provided "as-is" and you bear 
+the risk of using them. You may copy and use the mappings for development purposes, 
+but you may not redistribute the mappings complete and unmodified. 
+Microsoft makes no warranties, express or implied, with respect to the mappings 
+provided here.  Use and modification of this document or the source code (in any form) 
+of Minecraft: Java Edition is governed by the Minecraft End User License Agreement 
+available at https://account.mojang.com/documents/minecraft_eula.`
 
 ## Notice
 

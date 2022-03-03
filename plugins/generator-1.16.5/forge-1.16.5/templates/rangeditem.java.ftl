@@ -33,32 +33,27 @@
 
 package ${package}.item;
 
+import net.minecraft.entity.ai.attributes.Attributes;
+
 @${JavaModName}Elements.ModElement.Tag
 public class ${name}Item extends ${JavaModName}Elements.ModElement{
 
 	@ObjectHolder("${modid}:${registryname}")
 	public static final Item block = null;
 
-	@ObjectHolder("${modid}:entitybullet${registryname}")
-	public static final EntityType arrow = null;
+	public static final EntityType arrow = (EntityType.Builder.<ArrowCustomEntity>create(ArrowCustomEntity::new, EntityClassification.MISC)
+			.setShouldReceiveVelocityUpdates(true).setTrackingRange(64).setUpdateInterval(1).setCustomClientFactory(ArrowCustomEntity::new)
+			.size(0.5f, 0.5f)).build("projectile_${registryname}").setRegistryName("projectile_${registryname}");
 
-	public ${name}Item (${JavaModName}Elements instance) {
+	public ${name}Item(${JavaModName}Elements instance) {
 		super(instance, ${data.getModElement().getSortID()});
+
+		FMLJavaModLoadingContext.get().getModEventBus().register(new ${name}Renderer.ModelRegisterHandler());
 	}
 
 	@Override public void initElements() {
 		elements.items.add(() -> new ItemRanged());
-		elements.entities.add(() -> (EntityType.Builder.<ArrowCustomEntity>create(ArrowCustomEntity::new, EntityClassification.MISC)
-					.setShouldReceiveVelocityUpdates(true).setTrackingRange(64).setUpdateInterval(1).setCustomClientFactory(ArrowCustomEntity::new)
-					.size(0.5f, 0.5f)).build("entitybullet${registryname}").setRegistryName("entitybullet${registryname}"));
-	}
-
-	@Override @OnlyIn(Dist.CLIENT) public void init(FMLCommonSetupEvent event) {
-		<#if data.bulletModel != "Default">
-		RenderingRegistry.registerEntityRenderingHandler(arrow, renderManager -> new CustomRender(renderManager));
-		<#else>
-		RenderingRegistry.registerEntityRenderingHandler(arrow, renderManager -> new SpriteRenderer(renderManager, Minecraft.getInstance().getItemRenderer()));
-		</#if>
+		elements.entities.add(() -> arrow);
 	}
 
 	public static class ItemRanged extends Item {
@@ -108,7 +103,7 @@ public class ${name}Item extends ${JavaModName}Elements.ModElement{
 
 		<#if data.hasGlow>
 		@Override @OnlyIn(Dist.CLIENT) public boolean hasEffect(ItemStack itemstack) {
-		    <#if hasCondition(data.glowCondition)>
+		    <#if hasProcedure(data.glowCondition)>
 			PlayerEntity entity = Minecraft.getInstance().player;
 			World world = entity.world;
 			double x = entity.getPosX();
@@ -205,10 +200,16 @@ public class ${name}Item extends ${JavaModName}Elements.ModElement{
 			</#if>
 		}
 
+		@Override protected void arrowHit(LivingEntity entity) {
+			super.arrowHit(entity);
+			entity.setArrowCountInEntity(entity.getArrowCountInEntity() - 1); <#-- #53957 -->
+		}
+
 		<#if hasProcedure(data.onBulletHitsPlayer)>
 		@Override public void onCollideWithPlayer(PlayerEntity entity) {
 			super.onCollideWithPlayer(entity);
 			Entity sourceentity = this.func_234616_v_();
+			Entity imediatesourceentity = this;
 			double x = this.getPosX();
 			double y = this.getPosY();
 			double z = this.getPosZ();
@@ -217,18 +218,32 @@ public class ${name}Item extends ${JavaModName}Elements.ModElement{
 		}
         </#if>
 
-		@Override protected void arrowHit(LivingEntity entity) {
-			super.arrowHit(entity);
-			entity.setArrowCountInEntity(entity.getArrowCountInEntity() - 1); <#-- #53957 -->
-			<#if hasProcedure(data.onBulletHitsEntity)>
-				Entity sourceentity = this.func_234616_v_();
-				double x = this.getPosX();
-				double y = this.getPosY();
-				double z = this.getPosZ();
-				World world = this.world;
-				<@procedureOBJToCode data.onBulletHitsEntity/>
-			</#if>
+		<#if hasProcedure(data.onBulletHitsEntity)>
+		@Override public void onEntityHit(EntityRayTraceResult entityRayTraceResult) {
+			super.onEntityHit(entityRayTraceResult);
+			Entity entity = entityRayTraceResult.getEntity();
+			Entity sourceentity = this.func_234616_v_();
+			Entity imediatesourceentity = this;
+			double x = this.getPosX();
+			double y = this.getPosY();
+			double z = this.getPosZ();
+			World world = this.world;
+			<@procedureOBJToCode data.onBulletHitsEntity/>
 		}
+		</#if>
+
+		<#if hasProcedure(data.onBulletHitsBlock)>
+		@Override public void func_230299_a_(BlockRayTraceResult blockRayTraceResult) {
+			super.func_230299_a_(blockRayTraceResult);
+			double x = blockRayTraceResult.getPos().getX();
+			double y = blockRayTraceResult.getPos().getY();
+			double z = blockRayTraceResult.getPos().getZ();
+			World world = this.world;
+			Entity entity = this.func_234616_v_();
+			Entity imediatesourceentity = this;
+			<@procedureOBJToCode data.onBulletHitsBlock/>
+		}
+		</#if>
 
 		@Override public void tick() {
 			super.tick();
@@ -237,6 +252,7 @@ public class ${name}Item extends ${JavaModName}Elements.ModElement{
 			double z = this.getPosZ();
 			World world = this.world;
 			Entity entity = this.func_234616_v_();
+			Entity imediatesourceentity = this;
 			<@procedureOBJToCode data.onBulletFlyingTick/>
 			if (this.inGround) {
 			    <@procedureOBJToCode data.onBulletHitsBlock/>
@@ -246,75 +262,9 @@ public class ${name}Item extends ${JavaModName}Elements.ModElement{
 
 	}
 
-<#if data.bulletModel != "Default">
-		public static class CustomRender extends EntityRenderer<ArrowCustomEntity> {
-			private static final ResourceLocation texture = new ResourceLocation("${modid}:textures/${data.customBulletModelTexture}");
-
-			public CustomRender(EntityRendererManager renderManager) {
-				super(renderManager);
-			}
-
-			@Override public void render(ArrowCustomEntity entityIn, float entityYaw, float partialTicks, MatrixStack matrixStackIn, IRenderTypeBuffer bufferIn, int packedLightIn) {
-				IVertexBuilder vb = bufferIn.getBuffer(RenderType.getEntityCutout(this.getEntityTexture(entityIn)));
-				matrixStackIn.push();
-				matrixStackIn.rotate(Vector3f.YP.rotationDegrees(MathHelper.lerp(partialTicks, entityIn.prevRotationYaw, entityIn.rotationYaw) - 90));
-				matrixStackIn.rotate(Vector3f.ZP.rotationDegrees(90 + MathHelper.lerp(partialTicks, entityIn.prevRotationPitch, entityIn.rotationPitch)));
-				EntityModel model = new ${data.bulletModel}();
-				model.render(matrixStackIn, vb, packedLightIn, OverlayTexture.NO_OVERLAY, 1, 1, 1, 0.0625f);
-				matrixStackIn.pop();
-
-				super.render(entityIn, entityYaw, partialTicks, matrixStackIn, bufferIn, packedLightIn);
-			}
-
-			@Override public ResourceLocation getEntityTexture(ArrowCustomEntity entity) {
-				return texture;
-			}
-		}
-
-	<#if data.getModelCode()?? >
-	${data.getModelCode().toString()
-		.replace("extends ModelBase", "extends EntityModel<Entity>")
-		.replace("GlStateManager.translate", "GlStateManager.translated")
-		.replace("GlStateManager.scale", "GlStateManager.scaled")
-		.replace("RendererModel ", "ModelRenderer ")
-		.replace("RendererModel(", "ModelRenderer(")
-		.replaceAll("(.*?)\\.cubeList\\.add\\(new\\sModelBox\\(", "addBoxHelper(")
-		.replaceAll(",[\n\r\t\\s]+true\\)\\);", ", true);")
-		.replaceAll(",[\n\r\t\\s]+false\\)\\);", ", false);")
-		.replaceAll("setRotationAngles\\(float[\n\r\t\\s]+f,[\n\r\t\\s]+float[\n\r\t\\s]+f1,[\n\r\t\\s]+float[\n\r\t\\s]+f2,[\n\r\t\\s]+float[\n\r\t\\s]+f3,[\n\r\t\\s]+float[\n\r\t\\s]+f4,[\n\r\t\\s]+float[\n\r\t\\s]+f5,[\n\r\t\\s]+Entity[\n\r\t\\s]+e\\)",
-		"setRotationAngles(Entity e, float f, float f1, float f2, float f3, float f4)")
-		.replaceAll("setRotationAngles\\(float[\n\r\t\\s]+f,[\n\r\t\\s]+float[\n\r\t\\s]+f1,[\n\r\t\\s]+float[\n\r\t\\s]+f2,[\n\r\t\\s]+float[\n\r\t\\s]+f3,[\n\r\t\\s]+float[\n\r\t\\s]+f4,[\n\r\t\\s]+float[\n\r\t\\s]+f5,[\n\r\t\\s]+Entity[\n\r\t\\s]+entity\\)",
-		"setRotationAngles(Entity entity, float f, float f1, float f2, float f3, float f4)")
-
-		.replaceAll("((super\\.)?)setRotationAngles\\(f,[\n\r\t\\s]+f1,[\n\r\t\\s]+f2,[\n\r\t\\s]+f3,[\n\r\t\\s]+f4,[\n\r\t\\s]+f5,[\n\r\t\\s]+e\\);",
-		"")
-		.replaceAll("((super\\.)?)setRotationAngles\\(f,[\n\r\t\\s]+f1,[\n\r\t\\s]+f2,[\n\r\t\\s]+f3,[\n\r\t\\s]+f4,[\n\r\t\\s]+f5,[\n\r\t\\s]+entity\\);",
-		"")
-
-		.replaceAll("render\\(Entity[\n\r\t\\s]+entity,[\n\r\t\\s]+float[\n\r\t\\s]+f,[\n\r\t\\s]+float[\n\r\t\\s]+f1,[\n\r\t\\s]+float[\n\r\t\\s]+f2,[\n\r\t\\s]+float[\n\r\t\\s]+f3,[\n\r\t\\s]+float[\n\r\t\\s]+f4,[\n\r\t\\s]+float[\n\r\t\\s]+f5\\)",
-		"render(MatrixStack ms, IVertexBuilder vb, int i1, int i2, float f1, float f2, float f3, float f4)")
-		.replaceAll("super\\.render\\(entity,[\n\r\t\\s]+f,[\n\r\t\\s]+f1,[\n\r\t\\s]+f2,[\n\r\t\\s]+f3,[\n\r\t\\s]+f4,[\n\r\t\\s]+f5\\);", "")
-		.replace(".render(f5);", ".render(ms, vb, i1, i2, f1, f2, f3, f4);")
-	}
-
-		<#if data.getModelCode().contains(".cubeList.add(new")> <#-- if the model is pre 1.15.2 -->
-		@OnlyIn(Dist.CLIENT) public static void addBoxHelper(ModelRenderer renderer, int texU, int texV, float x, float y, float z, int dx, int dy, int dz, float delta) {
-			addBoxHelper(renderer, texU, texV, x, y, z, dx, dy, dz, delta, renderer.mirror);
-		}
-
-		@OnlyIn(Dist.CLIENT) public static void addBoxHelper(ModelRenderer renderer, int texU, int texV, float x, float y, float z, int dx, int dy, int dz, float delta, boolean mirror) {
-			renderer.mirror = mirror;
-			renderer.addBox("", x, y, z, dx, dy, dz, delta, texU, texV);
-		}
-		</#if>
-
-	</#if>
-
-</#if>
-
 	public static ArrowCustomEntity shoot(World world, LivingEntity entity, Random random, float power, double damage, int knockback) {
 		ArrowCustomEntity entityarrow = new ArrowCustomEntity(arrow, entity, world);
-		entityarrow.shoot(entity.getLookVec().x, entity.getLookVec().y, entity.getLookVec().z, power * 2, 0);
+		entityarrow.shoot(entity.getLook(1).x, entity.getLook(1).y, entity.getLook(1).z, power * 2, 0);
 		entityarrow.setSilent(true);
 		entityarrow.setIsCritical(${data.bulletParticles});
 		entityarrow.setDamage(damage);

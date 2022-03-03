@@ -18,6 +18,8 @@
 
 package net.mcreator.workspace.elements;
 
+import net.mcreator.workspace.Workspace;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -87,6 +89,45 @@ public class FolderElement implements IElement {
 		return childrenList;
 	}
 
+	public void moveTo(Workspace workspace, FolderElement newParent) {
+		doActionAndReassignRecursive(workspace, () -> {
+			// first remove folder from old parent and assign new parent to the folder
+			this.getParent().removeChild(this);
+			newParent.addChild(this);
+		});
+	}
+
+	public void setName(Workspace workspace, String name) {
+		doActionAndReassignRecursive(workspace, () -> this.name = name);
+	}
+
+	private void doActionAndReassignRecursive(Workspace workspace, Runnable action) {
+		String originalFolderPath = this.getPath();
+		List<String> originalRecursiveFolderChildrenPaths = this.getRecursiveFolderChildren().stream()
+				.map(FolderElement::getPath).toList();
+
+		action.run();
+
+		// then re-assign mod elements from this folder to the new folder ath
+		for (ModElement modElement : workspace.getModElements()) {
+			if (originalFolderPath.equals(modElement.getFolderPath())) {
+				// set parent folder again to update the path
+				modElement.setParentFolder(this);
+			}
+		}
+
+		// re-assign folders to all child-folder's mod elements recursively
+		int i = 0;
+		for (FolderElement childFolder : this.getRecursiveFolderChildren()) {
+			for (ModElement modElement : workspace.getModElements()) {
+				if (originalRecursiveFolderChildrenPaths.get(i).equals(modElement.getFolderPath())) {
+					modElement.setParentFolder(childFolder);
+				}
+			}
+			i++;
+		}
+	}
+
 	public boolean isRoot() {
 		return this.equals(ROOT);
 	}
@@ -108,10 +149,6 @@ public class FolderElement implements IElement {
 			return parent.buildPath(storage);
 		else
 			return storage;
-	}
-
-	public void setName(String name) {
-		this.name = name;
 	}
 
 	@Override public String getName() {
@@ -139,6 +176,14 @@ public class FolderElement implements IElement {
 
 	@Override public int hashCode() {
 		return getPath().hashCode();
+	}
+
+	public static FolderElement dummyFromPath(String path) {
+		return new FolderElement("", null) {
+			@Override public String getPath() {
+				return path;
+			}
+		};
 	}
 
 }

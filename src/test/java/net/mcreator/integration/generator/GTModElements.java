@@ -30,7 +30,7 @@ package net.mcreator.integration.generator;
 import com.google.gson.Gson;
 import net.mcreator.element.GeneratableElement;
 import net.mcreator.element.ModElementType;
-import net.mcreator.element.ModElementTypeRegistry;
+import net.mcreator.element.ModElementTypeLoader;
 import net.mcreator.generator.GeneratorStats;
 import net.mcreator.generator.GeneratorTemplate;
 import net.mcreator.integration.TestWorkspaceDataProvider;
@@ -41,30 +41,26 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
-import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class GTModElements {
 
 	public static void runTest(Logger LOG, String generatorName, Random random, Workspace workspace) {
-		for (Map.Entry<ModElementType, ModElementTypeRegistry.ModTypeRegistration<?>> modElementRegistration : ModElementTypeRegistry.REGISTRY
-				.entrySet()) {
-			if (workspace.getGeneratorStats().getModElementTypeCoverageInfo().get(modElementRegistration.getKey())
-					== GeneratorStats.CoverageStatus.NONE) {
-				LOG.warn("Skipping unsupported mod element type " + modElementRegistration.getKey() + " for generator "
-						+ generatorName);
+		for (ModElementType<?> modElementType : ModElementTypeLoader.REGISTRY) {
+
+			// silently skip mod elements not supported by this generator
+			if (workspace.getGeneratorStats().getModElementTypeCoverageInfo().get(modElementType)
+					== GeneratorStats.CoverageStatus.NONE)
 				continue;
-			}
 
-			List<GeneratableElement> modElementExamples = TestWorkspaceDataProvider
-					.getModElementExamplesFor(workspace, modElementRegistration.getKey(), random);
+			List<GeneratableElement> modElementExamples = TestWorkspaceDataProvider.getModElementExamplesFor(workspace,
+					modElementType, random);
 
-			LOG.info("[" + generatorName + "] Testing mod element type generation " + modElementRegistration.getKey()
-					.getReadableName() + " with " + modElementExamples.size() + " variants");
+			LOG.info("[" + generatorName + "] Testing mod element type generation " + modElementType.getReadableName()
+					+ " with " + modElementExamples.size() + " variants");
 
 			modElementExamples.forEach(generatableElement -> {
 				ModElement modElement = generatableElement.getModElement();
@@ -76,7 +72,7 @@ public class GTModElements {
 				workspace.getModElementManager().storeModElement(generatableElement);
 
 				List<File> modElementFiles = workspace.getGenerator().getModElementGeneratorTemplatesList(modElement)
-						.stream().map(GeneratorTemplate::getFile).collect(Collectors.toList());
+						.stream().map(GeneratorTemplate::getFile).toList();
 
 				// test generated JSON syntax (Java is tested later in the build)
 				for (File modElementFile : modElementFiles) {
@@ -91,7 +87,7 @@ public class GTModElements {
 					}
 				}
 
-				// Disabled part of the test due to Travis timeouts
+				// Disabled part of the test to speed up automated tests
 				/*// test mod element file detection system
 				for (File modElementFile : modElementFiles) {
 					ModElement modElement1 = workspace.getGenerator().getModElementThisFileBelongsTo(modElementFile);

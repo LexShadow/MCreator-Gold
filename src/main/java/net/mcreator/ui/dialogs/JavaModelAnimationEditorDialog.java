@@ -27,80 +27,37 @@
 
 package net.mcreator.ui.dialogs;
 
+import net.mcreator.minecraft.JavaModels;
 import net.mcreator.ui.MCreator;
+import net.mcreator.ui.init.EntityAnimationsLoader;
 import net.mcreator.ui.init.L10N;
 import net.mcreator.util.StringUtils;
 import org.jboss.forge.roaster.Roaster;
-import org.jboss.forge.roaster.model.source.FieldSource;
 import org.jboss.forge.roaster.model.source.JavaClassSource;
 import org.jboss.forge.roaster.model.source.MethodSource;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.HashMap;
 import java.util.List;
-import java.util.*;
+import java.util.Map;
 
 public class JavaModelAnimationEditorDialog {
-
-	private static final LinkedHashMap<String, List<String>> java_model_animations = new LinkedHashMap<String, List<String>>() {{
-		put("No animation", Collections.emptyList());
-		put("Head movement animation", Arrays.asList(".rotateAngleY = f3 / (180F / (float)Math.PI);",
-				".rotateAngleX = f4 / (180F / (float)Math.PI);"));
-		put("Left arm swing animation", Collections.singletonList(".rotateAngleX = MathHelper.cos(f * 0.6662F) * f1;"));
-		put("Right arm swing animation",
-				Collections.singletonList(".rotateAngleX = MathHelper.cos(f * 0.6662F + (float)Math.PI) * f1;"));
-		put("Left leg swing animation",
-				Collections.singletonList(".rotateAngleX = MathHelper.cos(f * 1.0F) * -1.0F * f1;"));
-		put("Right leg swing animation",
-				Collections.singletonList(".rotateAngleX = MathHelper.cos(f * 1.0F) * 1.0F * f1;"));
-
-		put("Left arm swing animation (Y axis)",
-				Collections.singletonList(".rotateAngleY = MathHelper.cos(f * 0.6662F) * f1;"));
-		put("Right arm swing animation (Y axis)",
-				Collections.singletonList(".rotateAngleY = MathHelper.cos(f * 0.6662F + (float)Math.PI) * f1;"));
-		put("Left leg swing animation (Y axis)",
-				Collections.singletonList(".rotateAngleY = MathHelper.cos(f * 1.0F) * -1.0F * f1;"));
-		put("Right leg swing animation (Y axis)",
-				Collections.singletonList(".rotateAngleY = MathHelper.cos(f * 1.0F) * 1.0F * f1;"));
-
-		put("Left arm swing animation (Z axis)",
-				Collections.singletonList(".rotateAngleZ = MathHelper.cos(f * 0.6662F) * f1;"));
-		put("Right arm swing animation (Z axis)",
-				Collections.singletonList(".rotateAngleZ = MathHelper.cos(f * 0.6662F + (float)Math.PI) * f1;"));
-		put("Left leg swing animation (Z axis)",
-				Collections.singletonList(".rotateAngleZ = MathHelper.cos(f * 1.0F) * -1.0F * f1;"));
-		put("Right leg swing animation (Z axis)",
-				Collections.singletonList(".rotateAngleZ = MathHelper.cos(f * 1.0F) * 1.0F * f1;"));
-
-		put("Constant X axis rotation", Collections.singletonList(".rotateAngleX = f2;"));
-		put("Constant Y axis rotation", Collections.singletonList(".rotateAngleY = f2;"));
-		put("Constant Z axis rotation", Collections.singletonList(".rotateAngleZ = f2;"));
-		put("Constant slow X axis rotation", Collections.singletonList(".rotateAngleX = f2 / 20.f;"));
-		put("Constant slow Y axis rotation", Collections.singletonList(".rotateAngleY = f2 / 20.f;"));
-		put("Constant slow Z axis rotation", Collections.singletonList(".rotateAngleZ = f2 / 20.f;"));
-
-		put("Rotate X axis from head yaw", Collections.singletonList(".rotateAngleX = f4 / (180F / (float)Math.PI);"));
-		put("Rotate Y axis from head yaw", Collections.singletonList(".rotateAngleY = f4 / (180F / (float)Math.PI);"));
-		put("Rotate Z axis from head yaw", Collections.singletonList(".rotateAngleZ = f4 / (180F / (float)Math.PI);"));
-		put("Rotate X axis from head pitch",
-				Collections.singletonList(".rotateAngleX = f3 / (180F / (float)Math.PI);"));
-		put("Rotate Y axis from head pitch",
-				Collections.singletonList(".rotateAngleY = f3 / (180F / (float)Math.PI);"));
-		put("Rotate Z axis from head pitch",
-				Collections.singletonList(".rotateAngleZ = f3 / (180F / (float)Math.PI);"));
-	}};
 
 	public static String openAnimationEditorDialog(MCreator mcreator, String modelSource) {
 		JavaClassSource classJavaSource = (JavaClassSource) Roaster.parse(modelSource);
 
-		Vector<String> vc = getModelParts(classJavaSource);
+		List<String> vc = JavaModels.getModelParts(classJavaSource);
 
 		JPanel options = new JPanel(new GridLayout(vc.size(), 2, 10, 10));
 
 		Map<String, JComboBox<String>> animations = new HashMap<>();
 
 		for (String part : vc) {
-			JComboBox<String> box = new JComboBox<>(java_model_animations.keySet().toArray(new String[0]));
+			List<String> types = EntityAnimationsLoader.getAnimationIDs();
+			types.sort(String::compareTo);
+			JComboBox<String> box = new JComboBox<>(types.toArray(new String[0]));
+			box.setSelectedItem("No animation");
 			animations.put(part, box);
 			options.add(new JLabel(StringUtils.abbreviateString(part, 20) + " animation: "));
 			options.add(box);
@@ -119,54 +76,28 @@ public class JavaModelAnimationEditorDialog {
 				L10N.t("dialog.animation_editor.action_set"));
 
 		if (opt == 0) {
-			List<MethodSource<JavaClassSource>> methods = classJavaSource.getMethods();
-			for (MethodSource<JavaClassSource> method : methods) {
-				if (method.getName().equals("setRotationAngles"))
-					classJavaSource.removeMethod(method);
+			int model_version = JavaModels.getModelVersionAndPrepareCodeForAnimations(classJavaSource);
+			if (model_version == 1) {
+				classJavaSource.addMethod(JavaModels.getAnimationsModelType1(animations));
+			} else {
+				classJavaSource.addMethod(JavaModels.getAnimationsModelType0(animations));
 			}
-
-			StringBuilder anim = new StringBuilder();
-
-			for (Map.Entry<String, JComboBox<String>> animation : animations.entrySet()) {
-				String selected = (String) animation.getValue().getSelectedItem();
-				if (selected != null) {
-					List<String> animationCodes = java_model_animations.get(selected);
-					for (String animationCode : animationCodes) {
-						anim.append("this.").append(animation.getKey()).append(animationCode).append("\n");
-					}
-				}
-			}
-
-			classJavaSource.addMethod(
-					"public void setRotationAngles(float f, float f1, float f2, float f3, float f4, float f5, Entity e) {super.setRotationAngles(f, f1, f2, f3, f4, f5, e);"
-							+ anim.toString() + "}");
-		} else if (classJavaSource.toString()
+		}
+		// Below: legacy model fixers for Techne models (only usable for legacy models (below 1.17))
+		else if (mcreator.getGeneratorConfiguration().getJavaModelsKey().equals("legacy") && classJavaSource.toString()
 				.contains("setRotationAngles(f, f1, f2, f3, f4, f5);")) { // outdated model format
 			List<MethodSource<JavaClassSource>> methods = classJavaSource.getMethods();
 			for (MethodSource<JavaClassSource> method : methods) {
 				if (method.getName().equals("setRotationAngles"))
 					classJavaSource.removeMethod(method);
 			}
-
-			classJavaSource.addMethod(
-					"public void setRotationAngles(float f, float f1, float f2, float f3, float f4, float f5, Entity e) {super.setRotationAngles(f, f1, f2, f3, f4, f5, e);}");
-		} else if (!classJavaSource.toString().contains("setRotationAngles(")) {
-			// if not setRotationAngles is defined in model, we add it now
-			classJavaSource.addMethod(
-					"public void setRotationAngles(float f, float f1, float f2, float f3, float f4, float f5, Entity e) {super.setRotationAngles(f, f1, f2, f3, f4, f5, e);}");
-		} else {
+		}
+		// Handling for keeping existing animations for non-legacy models
+		else {
 			return null; // with null, we indicate no change in model code
 		}
 
 		return classJavaSource.toString();
 	}
 
-	public static Vector<String> getModelParts(JavaClassSource classJavaSource) {
-		Vector<String> parts = new Vector<>();
-		List<FieldSource<JavaClassSource>> fields = classJavaSource.getFields();
-		for (FieldSource<JavaClassSource> field : fields)
-			if (field.getType().getName().contains("ModelRenderer"))
-				parts.add(field.getName());
-		return parts;
-	}
 }

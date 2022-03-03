@@ -18,8 +18,7 @@
 
 package net.mcreator.ui.component;
 
-import org.jetbrains.annotations.NotNull;
-
+import javax.annotation.Nonnull;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
@@ -56,7 +55,7 @@ public class ReordarableListTransferHandler extends TransferHandler {
 				return Objects.equals(localObjectFlavor, flavor);
 			}
 
-			@NotNull @Override public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
+			@Nonnull @Override public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
 				if (isDataFlavorSupported(flavor)) {
 					return transferedObjects;
 				} else {
@@ -78,13 +77,12 @@ public class ReordarableListTransferHandler extends TransferHandler {
 
 	@SuppressWarnings("unchecked") @Override public boolean importData(TransferSupport info) {
 		TransferHandler.DropLocation tdl = info.getDropLocation();
-		if (!canImport(info) || !(tdl instanceof JList.DropLocation)) {
+		if (!canImport(info) || !(tdl instanceof JList.DropLocation dl)) {
 			return false;
 		}
 
-		JList.DropLocation dl = (JList.DropLocation) tdl;
-		JList target = (JList) info.getComponent();
-		DefaultListModel listModel = (DefaultListModel) target.getModel();
+		JList<?> target = (JList<?>) info.getComponent();
+		DefaultListModel<Object> listModel = (DefaultListModel<Object>) target.getModel();
 		int max = listModel.getSize();
 		int index = dl.getIndex();
 		index = index < 0 ? max : index; // If it is out of range, it is appended to the end
@@ -122,8 +120,8 @@ public class ReordarableListTransferHandler extends TransferHandler {
 					}
 				}
 			}
-			JList source = (JList) c;
-			DefaultListModel model = (DefaultListModel) source.getModel();
+			JList<?> source = (JList<?>) c;
+			DefaultListModel<?> model = (DefaultListModel<?>) source.getModel();
 			for (int i = indices.length - 1; i >= 0; i--) {
 				model.remove(indices[i]);
 			}

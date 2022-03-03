@@ -19,6 +19,7 @@
 package net.mcreator.workspace.settings;
 
 import com.google.common.base.CaseFormat;
+import net.mcreator.minecraft.api.ModAPIImplementation;
 import net.mcreator.minecraft.api.ModAPIManager;
 import net.mcreator.ui.MCreatorApplication;
 import net.mcreator.util.StringUtils;
@@ -27,6 +28,7 @@ import net.mcreator.workspace.Workspace;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -61,6 +63,8 @@ import java.util.stream.Stream;
 	private boolean lockBaseModFiles = false;
 
 	private transient Workspace workspace; // we should never serialize this!!
+
+	private static transient final Pattern cleanVersionPattern = Pattern.compile("[^0-9.]+");
 
 	public WorkspaceSettings(WorkspaceSettings other) {
 		this.modid = other.modid;
@@ -166,31 +170,30 @@ import java.util.stream.Stream;
 	}
 
 	public Set<String> getRequiredMods() {
-		List<String> apisSupportedNames = ModAPIManager
-				.getModAPIsForGenerator(workspace.getGenerator().getGeneratorName()).stream()
-				.filter(e -> e.requiredWhenEnabled).map(e -> e.parent.id).collect(Collectors.toList());
+		List<String> apisSupportedNames = ModAPIManager.getModAPIsForGenerator(
+						workspace.getGenerator().getGeneratorName()).stream().filter(ModAPIImplementation::requiredWhenEnabled)
+				.map(e -> e.parent().id()).toList();
 
 		return Stream.concat(requiredMods.stream(), mcreatorDependencies.stream().filter(apisSupportedNames::contains))
-				.collect(Collectors.toSet());
+				.map(String::trim).collect(Collectors.toSet());
 	}
 
 	public Set<String> getDependencies() {
-		List<String> apisSupportedNames = ModAPIManager
-				.getModAPIsForGenerator(workspace.getGenerator().getGeneratorName()).stream()
-				.filter(e -> !e.requiredWhenEnabled).map(e -> e.parent.id).collect(Collectors.toList());
+		List<String> apisSupportedNames = ModAPIManager.getModAPIsForGenerator(
+						workspace.getGenerator().getGeneratorName()).stream().filter(e -> !e.requiredWhenEnabled())
+				.map(e -> e.parent().id()).toList();
 
 		return Stream.concat(dependencies.stream(), mcreatorDependencies.stream().filter(apisSupportedNames::contains))
-				.collect(Collectors.toSet());
+				.map(String::trim).collect(Collectors.toSet());
 	}
 
 	public Set<String> getDependants() {
-		return dependants;
+		return dependants.stream().map(String::trim).collect(Collectors.toSet());
 	}
 
 	public Set<String> getMCreatorDependencies() {
-		List<String> apisSupportedNames = ModAPIManager
-				.getModAPIsForGenerator(workspace.getGenerator().getGeneratorName()).stream().map(e -> e.parent.id)
-				.collect(Collectors.toList());
+		List<String> apisSupportedNames = ModAPIManager.getModAPIsForGenerator(
+				workspace.getGenerator().getGeneratorName()).stream().map(e -> e.parent().id()).toList();
 		return mcreatorDependencies.stream().filter(apisSupportedNames::contains).collect(Collectors.toSet());
 	}
 
@@ -208,6 +211,13 @@ import java.util.stream.Stream;
 
 	public String getVersion() {
 		return version;
+	}
+
+	public String getCleanVersion() {
+		String cleanVersion = cleanVersionPattern.matcher(version).replaceAll("");
+		if (!cleanVersion.isEmpty())
+			return cleanVersion;
+		return "0.0.0.0";
 	}
 
 	public String getDescription() {
@@ -274,18 +284,21 @@ import java.util.stream.Stream;
 	}
 
 	public String getWebsiteURL() {
-		if (websiteURL == null || websiteURL.trim().equals("") || !websiteURL.contains("http") || !websiteURL
-				.contains("://") || !websiteURL.contains("."))
+		if (websiteURL == null || websiteURL.trim().equals("") || !websiteURL.contains("http") || !websiteURL.contains(
+				"://") || !websiteURL.contains("."))
 			return MCreatorApplication.SERVER_DOMAIN;
 		return websiteURL;
 	}
 
 	public int[] get3DigitVersion() {
 		int[] ver3 = { 0, 0, 0 };
-		String[] parts = version.split("\\.");
-		for (int i = 0; i < parts.length; i++) {
-			String digit = parts[i].replaceAll("[^\\d]", "");
-			ver3[i] = Integer.parseInt(digit);
+		try {
+			String[] parts = version.split("\\.");
+			for (int i = 0; i < Math.min(parts.length, ver3.length); i++) {
+				String digit = parts[i].replaceAll("[^\\d]", "");
+				ver3[i] = Integer.parseInt(digit);
+			}
+		} catch (Exception ignored) {
 		}
 		return ver3;
 	}

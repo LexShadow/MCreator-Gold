@@ -22,8 +22,8 @@ import net.mcreator.gradle.GradleCacheImportFailedException;
 import net.mcreator.io.UserFolderManager;
 import net.mcreator.java.ImportTreeBuilder;
 import net.mcreator.java.ProjectJarManager;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
@@ -31,8 +31,8 @@ public class GeneratorGradleCache {
 
 	@Nullable transient ProjectJarManager projectJarManager;
 
-	private List<ClasspathEntry> classpath;
-	private Map<String, List<String>> importTree;
+	private final List<ClasspathEntry> classpath;
+	private final Map<String, List<String>> importTree;
 
 	GeneratorGradleCache(Generator generator) {
 		projectJarManager = new ProjectJarManager(generator);
@@ -55,8 +55,8 @@ public class GeneratorGradleCache {
 		public ClasspathEntry(String lib, @Nullable String src) {
 			this.lib = lib.replace(UserFolderManager.getGradleHome().getAbsolutePath(), "<user.home.mcreator.gradle>");
 			if (src != null)
-				this.src = src
-						.replace(UserFolderManager.getGradleHome().getAbsolutePath(), "<user.home.mcreator.gradle>");
+				this.src = src.replace(UserFolderManager.getGradleHome().getAbsolutePath(),
+						"<user.home.mcreator.gradle>");
 		}
 
 		public String getLib() {

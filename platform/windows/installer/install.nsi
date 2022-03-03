@@ -10,7 +10,8 @@ SetCompressor "lzma" ; to improve installer open performance and its size
 
 !define MCREATOR_VERSION "%mcreator%"
 !define BUILD "%build%"
-!define BITS "%bits%"
+
+!define BITS "64"
 
 !searchreplace MCREATOR_VERSION_SHORT ${MCREATOR_VERSION} "." ""
 
@@ -97,7 +98,7 @@ Section "MCreator ${MCREATOR_VERSION}" Installation
   ;write uninstall information to the registry
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${MUI_PRODUCT}" "DisplayName" "MCreator ${MCREATOR_VERSION}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${MUI_PRODUCT}" "Publisher" "Pylo"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${MUI_PRODUCT}" "Version" "${MCREATOR_VERSION}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${MUI_PRODUCT}" "DisplayVersion" "${MCREATOR_VERSION}.${BUILD}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${MUI_PRODUCT}" "URLInfoAbout" "https://mcreator.net/"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${MUI_PRODUCT}" "HelpLink" "https://mcreator.net/wiki"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${MUI_PRODUCT}" "URLUpdateInfo" "https://mcreator.net/download"
@@ -192,7 +193,8 @@ FunctionEnd
 
 Function un.LockedListShow
   !insertmacro MUI_HEADER_TEXT 'Scanning for locked files' 'Clicking next will auto-close the programs listed below'
-  LockedList::AddFile "$INSTDIR\jdk\jre\lib\rt.jar"
+  LockedList::AddFile "$INSTDIR\jdk\bin\java.exe"
+  LockedList::AddFile "$INSTDIR\jdk\bin\javaw.exe"
   LockedList::AddFolder "$INSTDIR\plugins"
   LockedList::AddFolder "$INSTDIR\lib"
   LockedList::Dialog /autonext /autoclosesilent

@@ -18,8 +18,6 @@
 
 package net.mcreator.ui.init;
 
-import net.mcreator.element.ModElementType;
-import net.mcreator.element.ModElementTypeRegistry;
 import net.mcreator.util.image.ImageUtils;
 import net.mcreator.util.image.InvalidTileSizeException;
 import net.mcreator.util.image.TiledImageUtils;
@@ -32,8 +30,6 @@ import java.awt.*;
 public class TiledImageCache {
 
 	private static final Logger LOG = LogManager.getLogger("TImage Chache");
-
-	private static TiledImageUtils modTypes;
 
 	public static ImageIcon plantGrowingYes;
 	public static ImageIcon plantGrowingNo;
@@ -56,18 +52,15 @@ public class TiledImageCache {
 	public static ImageIcon workspaceToggle;
 	public static ImageIcon workspaceModElementIDs;
 
-	public static ImageIcon armorHelmet;
-	public static ImageIcon armorBody;
-	public static ImageIcon armorLegs;
-	public static ImageIcon armorBoots;
+	public static ImageIcon bucket;
+	public static ImageIcon bucketMask;
 
 	public static void loadAndTileImages() {
 		try {
 			TiledImageUtils plantGrowthTile = new TiledImageUtils(UIRES.get("growthtile"), 128, 215);
 			TiledImageUtils modTabTile = new TiledImageUtils(UIRES.get("taboverlaytile"), 64, 64);
 			TiledImageUtils workspaceIcons = new TiledImageUtils(UIRES.get("wrktile"), 45, 45);
-			TiledImageUtils armorIcons = new TiledImageUtils(UIRES.get("armortile"), 32, 32);
-			modTypes = new TiledImageUtils(UIRES.get("modtypes"), 64, 64);
+			TiledImageUtils bucketIcons = new TiledImageUtils(UIRES.get("fluidbucket"), 32, 32);
 
 			plantGrowingYes = plantGrowthTile.getIcon(1, 1);
 			plantGrowingNo = plantGrowthTile.getIcon(2, 1);
@@ -81,8 +74,8 @@ public class TiledImageCache {
 			modTabBlue = modTabTile.getIcon(3, 1);
 			modTabPurple = modTabTile.getIcon(4, 1);
 
-			workspaceAdd = ImageUtils
-					.colorize(workspaceIcons.getIcon(1, 1), (Color) UIManager.get("MCreatorLAF.MAIN_TINT"), false);
+			workspaceAdd = ImageUtils.colorize(workspaceIcons.getIcon(1, 1),
+					(Color) UIManager.get("MCreatorLAF.MAIN_TINT"), false);
 			workspaceCode = workspaceIcons.getIcon(2, 1);
 			workspaceDelete = workspaceIcons.getIcon(3, 1);
 			workspaceDeleteAll = workspaceIcons.getIcon(4, 1);
@@ -91,26 +84,12 @@ public class TiledImageCache {
 			workspaceToggle = workspaceIcons.getIcon(8, 1);
 			workspaceModElementIDs = workspaceIcons.getIcon(6, 1);
 
-			armorHelmet = armorIcons.getIcon(1, 1);
-			armorBody = armorIcons.getIcon(2, 1);
-			armorLegs = armorIcons.getIcon(3, 1);
-			armorBoots = armorIcons.getIcon(4, 1);
+			bucket = bucketIcons.getIcon(1, 1);
+			bucketMask = bucketIcons.getIcon(2, 1);
 
 		} catch (InvalidTileSizeException e) {
 			LOG.error(e.getMessage(), e);
 		}
-	}
-
-	public static ImageIcon getModTypeIcon(ModElementType modType) {
-		if (modType == null)
-			return modTypes.getIcon(1, 1);
-
-		ModElementTypeRegistry.ModTypeRegistration<?> modRegistration = ModElementTypeRegistry.REGISTRY.get(modType);
-		if (modRegistration != null) {
-			return modTypes.getIcon(modRegistration.getIconID(), 1);
-		}
-
-		return modTypes.getIcon(1, 1);
 	}
 
 }

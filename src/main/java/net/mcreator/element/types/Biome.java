@@ -19,8 +19,10 @@
 package net.mcreator.element.types;
 
 import net.mcreator.element.GeneratableElement;
+import net.mcreator.element.parts.EntityEntry;
+import net.mcreator.element.parts.MItemBlock;
 import net.mcreator.element.parts.Particle;
-import net.mcreator.element.parts.*;
+import net.mcreator.element.parts.Sound;
 import net.mcreator.minecraft.MinecraftImageGenerator;
 import net.mcreator.workspace.elements.ModElement;
 
@@ -28,6 +30,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @SuppressWarnings("unused") public class Biome extends GeneratableElement {
 
@@ -56,7 +59,6 @@ import java.util.List;
 	public double particlesProbability;
 
 	public String biomeCategory;
-	public BiomeEntry parent;
 	public double rainingPossibility;
 	public double temperature;
 	public double baseHeight;
@@ -81,7 +83,6 @@ import java.util.List;
 	public String vanillaTreeType;
 	public int treeType;
 	public int minHeight;
-	public int maxWaterDepth;
 	public MItemBlock treeStem;
 	public MItemBlock treeBranch;
 	public MItemBlock treeVines;
@@ -89,15 +90,24 @@ import java.util.List;
 
 	public boolean spawnStronghold;
 	public boolean spawnMineshaft;
+	public boolean spawnMineshaftMesa;
 	public boolean spawnPillagerOutpost;
 	public String villageType;
 	public boolean spawnWoodlandMansion;
 	public boolean spawnJungleTemple;
 	public boolean spawnDesertPyramid;
+	public boolean spawnSwampHut;
 	public boolean spawnIgloo;
 	public boolean spawnOceanMonument;
 	public boolean spawnShipwreck;
+	public boolean spawnShipwreckBeached;
+	public boolean spawnBuriedTreasure;
 	public String oceanRuinType;
+	public boolean spawnNetherBridge;
+	public boolean spawnNetherFossil;
+	public boolean spawnBastionRemnant;
+	public boolean spawnEndCity;
+	public String spawnRuinedPortal;
 
 	public List<String> defaultFeatures;
 
@@ -122,6 +132,7 @@ import java.util.List;
 		vanillaTreeType = "Default";
 		villageType = "none";
 		oceanRuinType = "NONE";
+		spawnRuinedPortal = "NONE";
 		biomeCategory = "NONE";
 		biomeDictionaryTypes = new ArrayList<>();
 		spawnEntries = new ArrayList<>();
@@ -138,10 +149,54 @@ import java.util.List;
 
 	}
 
+	public boolean hasFruits() {
+		return !treeFruits.isEmpty();
+	}
+
+	public boolean hasVines() {
+		return !treeVines.isEmpty();
+	}
+
+	public boolean hasStructure(String structureType) {
+		return switch (structureType.toLowerCase(Locale.ENGLISH)) {
+			case "mineshaft" -> spawnMineshaft;
+			case "igloo" -> spawnIgloo;
+			case "stronghold" -> spawnStronghold;
+			case "mineshaft_mesa" -> spawnMineshaftMesa;
+			case "pillager_outpost" -> spawnPillagerOutpost;
+			case "woodland_mansion" -> spawnWoodlandMansion;
+			case "jungle_temple" -> spawnJungleTemple;
+			case "desert_pyramid" -> spawnDesertPyramid;
+			case "swamp_hut" -> spawnSwampHut;
+			case "ocean_monument" -> spawnOceanMonument;
+			case "shipwreck" -> spawnShipwreck;
+			case "shipwreck_beached" -> spawnShipwreckBeached;
+			case "buried_treasure" -> spawnBuriedTreasure;
+			case "nether_fortress" -> spawnNetherBridge;
+			case "nether_fossil" -> spawnNetherFossil;
+			case "bastion_remnant" -> spawnBastionRemnant;
+			case "end_city" -> spawnEndCity;
+			case "village_desert" -> villageType.equals("desert");
+			case "village_plains" -> villageType.equals("plains");
+			case "village_savanna" -> villageType.equals("savanna");
+			case "village_snowy" -> villageType.equals("snowy");
+			case "village_taiga" -> villageType.equals("taiga");
+			case "ocean_ruin_cold" -> oceanRuinType.equals("COLD");
+			case "ocean_ruin_warm" -> oceanRuinType.equals("WARM");
+			case "ruined_portal_standard" -> spawnRuinedPortal.equals("STANDARD");
+			case "ruined_portal_desert" -> spawnRuinedPortal.equals("DESERT");
+			case "ruined_portal_jungle" -> spawnRuinedPortal.equals("JUNGLE");
+			case "ruined_portal_swamp" -> spawnRuinedPortal.equals("SWAMP");
+			case "ruined_portal_mountain" -> spawnRuinedPortal.equals("MOUNTAIN");
+			case "ruined_portal_ocean" -> spawnRuinedPortal.equals("OCEAN");
+			case "ruined_portal_nether" -> spawnRuinedPortal.equals("NETHER");
+			default -> false;
+		};
+	}
+
 	@Override public BufferedImage generateModElementPicture() {
-		return MinecraftImageGenerator.Preview
-				.generateBiomePreviewPicture(getModElement().getWorkspace(), airColor, grassColor, waterColor,
-						groundBlock, undergroundBlock, treesPerChunk, treeType, treeStem, treeBranch);
+		return MinecraftImageGenerator.Preview.generateBiomePreviewPicture(getModElement().getWorkspace(), airColor,
+				grassColor, waterColor, groundBlock, undergroundBlock, treesPerChunk, treeType, treeStem, treeBranch);
 	}
 
 }

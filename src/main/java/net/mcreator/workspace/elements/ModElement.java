@@ -18,33 +18,31 @@
 
 package net.mcreator.workspace.elements;
 
-import net.mcreator.element.BaseType;
-import net.mcreator.element.GeneratableElement;
-import net.mcreator.element.ModElementType;
-import net.mcreator.element.RecipeType;
+import com.google.gson.*;
+import net.mcreator.element.*;
 import net.mcreator.generator.IGeneratorProvider;
 import net.mcreator.minecraft.MCItem;
 import net.mcreator.minecraft.RegistryNameFixer;
 import net.mcreator.workspace.IWorkspaceProvider;
 import net.mcreator.workspace.Workspace;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.swing.*;
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.util.*;
 
 public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorProvider, IElement {
 
 	private String name;
-	private ModElementType type;
+	private String type;
 
 	private Integer sortid = null;
 
 	private boolean compiles = true;
 	private boolean locked_code = false;
 
-	private Map<Integer, Integer> ids = new HashMap<>();
 	@Nullable private String registry_name;
 
 	@Nullable private Map<String, Object> metadata = null;
@@ -63,9 +61,9 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 	// it is transient so it does not get serialized
 	private transient Workspace workspace;
 
-	public ModElement(@NotNull Workspace workspace, @NotNull String name, ModElementType type) {
+	public ModElement(@Nonnull Workspace workspace, @Nonnull String name, ModElementType<?> type) {
 		this.name = name;
-		this.type = type;
+		this.type = type.getRegistryName();
 		this.registry_name = RegistryNameFixer.fromCamelCase(name);
 
 		setWorkspace(workspace);
@@ -79,7 +77,7 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 	 * @param mu            Mod element to be duplicated
 	 * @param duplicateName Name of the duplicate
 	 */
-	public ModElement(@NotNull Workspace workspace, @NotNull ModElement mu, String duplicateName) {
+	public ModElement(@Nonnull Workspace workspace, @Nonnull ModElement mu, String duplicateName) {
 		this.name = duplicateName;
 		this.type = mu.type;
 		this.registry_name = RegistryNameFixer.fromCamelCase(name);
@@ -101,7 +99,6 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 		this.compiles = other.compiles;
 		this.locked_code = other.locked_code;
 		this.sortid = other.sortid;
-		this.ids = other.ids;
 		this.registry_name = other.registry_name;
 		this.metadata = other.metadata;
 		this.mcItems = other.mcItems;
@@ -117,12 +114,16 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 
 		mcItems = new ArrayList<>();
 
-		if (type == ModElementType.DIMENSION) {
+		if (getType() == ModElementType.DIMENSION) {
 			if (getMetadata("ep") != null && (Boolean) getMetadata("ep"))
 				mcItems.add(new MCItem.Custom(this, null));
-		} else if (type.getRecipeType() == RecipeType.ITEM || type.getRecipeType() == RecipeType.BLOCK) {
+		} else if (getType().getRecipeType() == RecipeType.ITEM || getType().getRecipeType() == RecipeType.BLOCK) {
 			mcItems.add(new MCItem.Custom(this, null));
-		} else if (type.getBaseType() == BaseType.ARMOR) {
+		} else if (getType().getRecipeType() == RecipeType.BUCKET) {
+			mcItems.add(new MCItem.Custom(this, null));
+			if (getMetadata("gb") != null && (Boolean) getMetadata("gb"))
+				mcItems.add(new MCItem.Custom(this, "bucket"));
+		} else if (getType().getBaseType() == BaseType.ARMOR) {
 			if (getMetadata("eh") != null && (Boolean) getMetadata("eh"))
 				mcItems.add(new MCItem.Custom(this, "helmet"));
 			if (getMetadata("ec") != null && (Boolean) getMetadata("ec"))
@@ -142,7 +143,7 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 				workspace.getFolderManager().getModElementPicturesCacheDir().getAbsolutePath() + "/" + name + ".png");
 	}
 
-	@Override public @NotNull Workspace getWorkspace() {
+	@Override public @Nonnull Workspace getWorkspace() {
 		return workspace;
 	}
 
@@ -210,56 +211,6 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 		return name.hashCode();
 	}
 
-	public void setIDAt(int idindex, int id) {
-		this.ids.put(idindex, id);
-	}
-
-	public Map<Integer, Integer> getIDMap() {
-		return ids;
-	}
-
-	/**
-	 * Get id for given index or get one for base type of this mod element
-	 *
-	 * @param index The ID index
-	 * @return The ID of the element for the given index, could be newly created
-	 */
-	public int getID(int index) {
-		return getID(index, type.getBaseType());
-	}
-
-	/**
-	 * Get id for given index or get one for base type provided
-	 *
-	 * @param index    The ID index
-	 * @param baseType The base type under which to look for the free IDs
-	 * @return The ID of the element for the given index, could be newly created
-	 */
-	public int getID(int index, BaseType baseType) {
-		if (ids.get(index) == null) { // id at this index is not set yet, create id
-			int free_id = workspace.getNextFreeIDAndIncrease(baseType);
-			ids.put(index, free_id);
-			return free_id;
-		}
-		return ids.get(index);
-	}
-
-	/**
-	 * Get id for given index or get one for base type string provided
-	 *
-	 * @param index    The ID index
-	 * @param baseType The base type under which to look for the free IDs
-	 * @return The ID of the element for the given index, could be newly created
-	 */
-	@SuppressWarnings("unused") public int getID(int index, String baseType) {
-		if (ids.get(index) == null) { // id at this index is not set yet, create id
-			int free_id = workspace.getNextFreeIDAndIncrease(BaseType.valueOf(baseType.toUpperCase(Locale.ENGLISH)));
-			ids.put(index, free_id);
-			return free_id;
-		}
-		return ids.get(index);
-	}
-
 	public boolean doesCompile() {
 		return compiles;
 	}
@@ -276,12 +227,16 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 		this.name = name;
 	}
 
-	public ModElementType getType() {
-		return type;
+	public ModElementType<?> getType() {
+		return ModElementTypeLoader.getModElementType(type);
 	}
 
-	public void setType(ModElementType type) {
-		this.type = type;
+	public String getTypeString() {
+		return type.toLowerCase(Locale.ENGLISH);
+	}
+
+	public void setType(ModElementType<?> type) {
+		this.type = type.getRegistryName();
 	}
 
 	public boolean isCodeLocked() {
@@ -289,7 +244,7 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 	}
 
 	public void setCodeLock(boolean codeLock) {
-		if (this.type == ModElementType.CODE && !codeLock)
+		if (this.getType() == ModElementType.CODE && !codeLock)
 			return;
 		this.locked_code = codeLock;
 	}
@@ -300,9 +255,16 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 
 	public String getRegistryName() {
 		if (registry_name == null)
-			return getName().toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9/._-]+", "");
+			return RegistryNameFixer.fromCamelCase(this.name);
 		else
 			return registry_name;
+	}
+
+	public String getRegistryNameUpper() {
+		if (registry_name == null)
+			return RegistryNameFixer.fromCamelCase(this.name).toUpperCase(Locale.ENGLISH);
+		else
+			return registry_name.toUpperCase(Locale.ENGLISH);
 	}
 
 	public void setRegistryName(String registry_name) {
@@ -318,6 +280,28 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 			this.path = null;
 		else
 			this.path = parent.getPath();
+	}
+
+	public static class ModElementDeserializer implements JsonDeserializer<ModElement> {
+
+		private final Gson gson = new Gson();
+
+		@Override
+		public ModElement deserialize(JsonElement jsonElement, Type typeOfT, JsonDeserializationContext context)
+				throws JsonParseException {
+			JsonObject json = jsonElement.getAsJsonObject();
+
+			String newType = json.get("type").getAsString();
+			if (newType.equals("gun")) {
+				newType = "rangeditem";
+			} else if (newType.equals("mob")) {
+				newType = "livingentity";
+			}
+
+			json.addProperty("type", newType);
+
+			return gson.fromJson(json, ModElement.class);
+		}
 	}
 
 }

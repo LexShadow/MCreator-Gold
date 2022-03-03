@@ -20,12 +20,12 @@ package net.mcreator.workspace;
 
 import net.mcreator.generator.GeneratorUtils;
 import net.mcreator.io.OS;
-import org.apache.commons.io.FilenameUtils;
+import net.mcreator.util.FilenameUtilsPatched;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
@@ -40,7 +40,7 @@ public class WorkspaceFolderManager {
 	private final File workspaceFolder;
 	private final Workspace workspace;
 
-	public WorkspaceFolderManager(@NotNull File workspaceFile, @NotNull Workspace workspace) {
+	public WorkspaceFolderManager(@Nonnull File workspaceFile, @Nonnull Workspace workspace) {
 		this.workspaceFolder = workspaceFile.getParentFile();
 		this.workspace = workspace;
 	}
@@ -76,7 +76,7 @@ public class WorkspaceFolderManager {
 			File[] files = structuresDir.listFiles();
 			for (File file : files != null ? files : new File[0])
 				if (file.getName().endsWith(".nbt"))
-					structures.add(FilenameUtils.removeExtension(file.getName()));
+					structures.add(FilenameUtilsPatched.removeExtension(file.getName()));
 		}
 		return structures;
 	}

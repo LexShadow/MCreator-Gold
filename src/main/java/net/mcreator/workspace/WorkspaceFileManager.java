@@ -22,12 +22,13 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.mcreator.io.FileIO;
 import net.mcreator.preferences.PreferencesManager;
+import net.mcreator.workspace.elements.ModElement;
 import net.mcreator.workspace.elements.ModElementManager;
 import net.mcreator.workspace.elements.SoundElement;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -45,7 +46,8 @@ public class WorkspaceFileManager implements Closeable {
 	private final Logger LOG;
 
 	public static final Gson gson = new GsonBuilder().setLenient().setPrettyPrinting()
-			.registerTypeAdapter(SoundElement.class, new SoundElement.SoundElementDeserializer()).create();
+			.registerTypeAdapter(SoundElement.class, new SoundElement.SoundElementDeserializer())
+			.registerTypeAdapter(ModElement.class, new ModElement.ModElementDeserializer()).create();
 
 	private DataSavedListener dataSavedListener;
 
@@ -57,7 +59,7 @@ public class WorkspaceFileManager implements Closeable {
 	private final WorkspaceFolderManager folderManager;
 	private final ModElementManager modElementManager;
 
-	WorkspaceFileManager(@NotNull File workspaceFile, @NotNull Workspace workspace) {
+	WorkspaceFileManager(@Nonnull File workspaceFile, @Nonnull Workspace workspace) {
 		this.workspaceFile = workspaceFile;
 		this.workspace = workspace;
 
@@ -67,9 +69,8 @@ public class WorkspaceFileManager implements Closeable {
 		this.modElementManager = new ModElementManager(workspace);
 
 		// start autosave scheduler
-		lastSchedule = dataSaveExecutor
-				.schedule(new SaveTask(this), PreferencesManager.PREFERENCES.backups.workspaceAutosaveInterval,
-						TimeUnit.SECONDS);
+		lastSchedule = dataSaveExecutor.schedule(new SaveTask(this),
+				PreferencesManager.PREFERENCES.backups.workspaceAutosaveInterval, TimeUnit.SECONDS);
 	}
 
 	public File getWorkspaceFile() {
@@ -115,7 +116,7 @@ public class WorkspaceFileManager implements Closeable {
 			// We do an "atomic" write to the FS
 			File outFile = workspaceFile;
 			File tmpFile = new File(folderManager.getWorkspaceFolder(), workspaceFile.getName() + ".lock");
-			FileIO.writeStringToFile(workspacestring, tmpFile);
+			FileIO.writeUTF8toFile(workspacestring, tmpFile);
 			try {
 				Files.move(tmpFile.toPath(), outFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
 			} catch (Exception e) {
@@ -126,7 +127,7 @@ public class WorkspaceFileManager implements Closeable {
 				} catch (IOException e1) {
 					LOG.error(e1.getMessage(), e1);
 					LOG.error("Falling back to normal write (non atomic, without move!)");
-					FileIO.writeStringToFile(workspacestring, outFile);
+					FileIO.writeUTF8toFile(workspacestring, outFile);
 				}
 			}
 
@@ -180,11 +181,11 @@ public class WorkspaceFileManager implements Closeable {
 		void dataSaved();
 	}
 
-	private static class SaveTask implements Runnable {
+	@SuppressWarnings("ClassCanBeRecord") private static class SaveTask implements Runnable {
 
 		private final WorkspaceFileManager fileManager;
 
-		SaveTask(WorkspaceFileManager fileManager) {
+		private SaveTask(WorkspaceFileManager fileManager) {
 			this.fileManager = fileManager;
 		}
 
@@ -195,6 +196,7 @@ public class WorkspaceFileManager implements Closeable {
 			fileManager.lastSchedule = fileManager.dataSaveExecutor.schedule(new SaveTask(fileManager),
 					PreferencesManager.PREFERENCES.backups.workspaceAutosaveInterval, TimeUnit.SECONDS);
 		}
+
 	}
 
 }

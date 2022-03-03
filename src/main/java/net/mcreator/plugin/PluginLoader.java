@@ -19,44 +19,56 @@
 package net.mcreator.plugin;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonParser;
 import net.mcreator.io.FileIO;
 import net.mcreator.io.UserFolderManager;
+import net.mcreator.io.net.WebIO;
 import net.mcreator.io.zip.ZipIO;
+import net.mcreator.ui.MCreatorApplication;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.Nullable;
 import org.reflections.Reflections;
-import org.reflections.scanners.ResourcesScanner;
+import org.reflections.scanners.Scanners;
+import org.reflections.util.ConfigurationBuilder;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+/**
+ * <p>This class detects and then try to load all builtin or custom {@link Plugin}s. </p>
+ */
 public class PluginLoader extends URLClassLoader {
 
 	private static final Logger LOG = LogManager.getLogger("Plugin Loader");
 
 	public static PluginLoader INSTANCE;
 
+	/**
+	 * <p>Set the value to the INSTANCE variable, so we can access values everywhere in the code.</p>
+	 */
 	public static void initInstance() {
 		INSTANCE = new PluginLoader();
 	}
 
 	private final List<Plugin> plugins;
+	private final List<PluginUpdateInfo> pluginUpdates;
 
 	private final Reflections reflections;
 
+	/**
+	 * <p>The core of the detection and loading</p>
+	 */
 	public PluginLoader() {
 		super(new URL[] {}, null);
 
 		this.plugins = new ArrayList<>();
+		this.pluginUpdates = new ArrayList<>();
 
 		UserFolderManager.getFileFromUserFolder("plugins").mkdirs();
 
@@ -66,7 +78,7 @@ public class PluginLoader extends URLClassLoader {
 
 		Collections.sort(pluginsLoadList);
 
-		List<String> idList = pluginsLoadList.stream().map(Plugin::getID).collect(Collectors.toList());
+		List<String> idList = pluginsLoadList.stream().map(Plugin::getID).toList();
 
 		for (Plugin plugin : pluginsLoadList) {
 			if (plugin.getInfo().getDependencies() != null) {
@@ -79,8 +91,8 @@ public class PluginLoader extends URLClassLoader {
 			}
 
 			try {
-				LOG.info("Loading plugin: " + plugin.getID() + " from " + plugin.getFile() + ", weight: " + plugin
-						.getWeight());
+				LOG.info("Loading plugin: " + plugin.getID() + " from " + plugin.getFile() + ", weight: "
+						+ plugin.getWeight());
 				if (plugin.getFile().isDirectory()) {
 					addURL(plugin.getFile().toURI().toURL());
 				} else {
@@ -93,27 +105,54 @@ public class PluginLoader extends URLClassLoader {
 			}
 		}
 
-		this.reflections = new Reflections(new ResourcesScanner(), this);
+		this.reflections = new Reflections(
+				new ConfigurationBuilder().setClassLoaders(new ClassLoader[] { this }).setUrls(getURLs())
+						.setScanners(Scanners.Resources).setExpandSuperTypes(false));
+
+		checkForPluginUpdates();
 	}
 
+	/**
+	 * @param pattern <p>Returned file names will need to follow this {@link Pattern}.</p>
+	 * @return <p>The path into a {@link Plugin} of all files following the provided {@link Pattern}.</p>
+	 */
 	public Set<String> getResources(Pattern pattern) {
 		return this.getResources(null, pattern);
 	}
 
+	/**
+	 * @param pkg <p>The path of directories the method will use to access wanted files. Sub folders need to be split with a dot.</p>
+	 * @return <p>The path into a {@link Plugin} of all files inside the provided folder.</p>
+	 */
 	public Set<String> getResourcesInPackage(String pkg) {
 		return this.getResources(pkg, null);
 	}
 
+	/**
+	 * @param pkg     <p>The path of directories the method will use to access wanted files. Sub folders need to be split with a dot.</p>
+	 * @param pattern <p>Returned file names will need to follow this {@link Pattern}.</p>
+	 * @return <p>The path into a {@link Plugin} of all files inside the provided folder following the provided {@link Pattern} .</p>
+	 */
 	public Set<String> getResources(@Nullable String pkg, @Nullable Pattern pattern) {
 		Set<String> reflectionsRetval =
-				pattern != null ? this.reflections.getResources(pattern) : this.reflections.getResources(e -> true);
+				pattern != null ? this.reflections.getResources(pattern) : this.reflections.getResources(".*");
 		if (pkg == null)
 			return reflectionsRetval;
 		return reflectionsRetval.stream().filter(e -> e.replace("/", ".").startsWith(pkg)).collect(Collectors.toSet());
 	}
 
+	/**
+	 * @return <p> A {@link List} of all loaded plugins.</p>
+	 */
 	public List<Plugin> getPlugins() {
 		return plugins;
+	}
+
+	/**
+	 * @return <p>A list of all plugin updates detected.</p>
+	 */
+	public List<PluginUpdateInfo> getPluginUpdates() {
+		return pluginUpdates;
 	}
 
 	synchronized private List<Plugin> listPluginsFromFolder(File folder, boolean builtin) {
@@ -182,6 +221,28 @@ public class PluginLoader extends URLClassLoader {
 		}
 
 		return plugin;
+	}
+
+	private void checkForPluginUpdates() {
+		if (MCreatorApplication.isInternet) {
+			pluginUpdates.addAll(plugins.stream().parallel().map(plugin -> {
+				if (plugin.getInfo().getUpdateJSONURL() != null) {
+					if (!plugin.getInfo().getVersion().equals(PluginInfo.VERSION_NOT_SPECIFIED)) {
+						try {
+							String updateJSON = WebIO.readURLToString(plugin.getInfo().getUpdateJSONURL());
+							String version = JsonParser.parseString(updateJSON).getAsJsonObject().get(plugin.getID())
+									.getAsJsonObject().get("latest").getAsString();
+							if (!version.equals(plugin.getPluginVersion())) {
+								return new PluginUpdateInfo(plugin, version);
+							}
+						} catch (Exception e) {
+							LOG.warn("Failed to parse update info for plugin: " + plugin.getID(), e);
+						}
+					}
+				}
+				return null;
+			}).filter(Objects::nonNull).toList());
+		}
 	}
 
 }

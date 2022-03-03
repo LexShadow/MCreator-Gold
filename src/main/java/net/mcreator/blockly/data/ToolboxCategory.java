@@ -20,25 +20,49 @@ package net.mcreator.blockly.data;
 
 import net.mcreator.blockly.BlocklyBlockUtil;
 import net.mcreator.ui.init.L10N;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.awt.*;
 
 public class ToolboxCategory {
+	private static final Logger LOG = LogManager.getLogger("Toolbox category");
 
-	String id, name, description;
-
-	int color;
+	String id, name, description, color;
 	boolean api;
 
 	public String getName() {
-		String l10nname = L10N.t("blockly.category." + id);
-		if (l10nname != null)
-			return l10nname;
+		String localized_name = L10N.t("blockly.category." + id);
+		if (localized_name != null)
+			return localized_name;
 
 		return name;
 	}
 
+	public String getDescription() {
+		String localized_desc = L10N.t("blockly.category." + id + ".description");
+		if (localized_desc != null)
+			return localized_desc;
+
+		return description;
+	}
+
+	/**
+	 * Returns the color of this toolbox category. If the field is a valid hex color code, it's returned as-is.
+	 * If it's a valid integer, it's treated as a hue to get the color with the correct saturation and value.
+	 *
+	 * @return The color of this toolbox category, or black if it's badly formatted.
+	 */
 	public Color getColor() {
-		return BlocklyBlockUtil.getBlockColorFromHUE(color);
+		try {
+			if (!color.startsWith("#"))
+				return BlocklyBlockUtil.getBlockColorFromHUE(Integer.parseInt(color));
+			else
+				return Color.decode(color);
+		} catch (Exception e) {
+			LOG.warn("The color for toolbox category " + getName()
+					+ " isn't formatted correctly. Using black color for it");
+			return Color.BLACK;
+		}
 	}
 }

@@ -23,8 +23,8 @@ import net.mcreator.ui.component.util.PanelUtils;
 import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.validation.Validator;
 import net.mcreator.ui.validation.component.VTextField;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import javax.swing.*;
 import javax.swing.event.AncestorEvent;
 import javax.swing.event.AncestorListener;
@@ -86,9 +86,8 @@ public class VOptionPane {
 			}
 		});
 
-		int option = JOptionPane
-				.showOptionDialog(frame, inp, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, icon,
-						new String[] { ok, cancel }, ok);
+		int option = JOptionPane.showOptionDialog(frame, inp, title, JOptionPane.OK_CANCEL_OPTION,
+				JOptionPane.QUESTION_MESSAGE, icon, new String[] { ok, cancel }, ok);
 		if (option == 0
 				&& textField.getValidationStatus().getValidationResultType() != Validator.ValidationResultType.ERROR) {
 			return textField.getText();

@@ -29,23 +29,23 @@ import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.merge.RecursiveMerger;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SyncTwoRefsWithMerge {
 
-	public static SyncResult sync(Git git, @NotNull ObjectId local, @NotNull ObjectId remote,
+	public static SyncResult sync(Git git, @Nonnull ObjectId local, @Nonnull ObjectId remote,
 			ICustomSyncHandler customSyncHandler, @Nullable PreCustomMergeAction preCustomMergeAction, boolean dryRun)
 			throws GitAPIException, IOException, TooNewWorkspaceVerisonException {
 
-		RecursiveMerger merger = (RecursiveMerger) MergeStrategy.RECURSIVE
-				.newMerger(git.getRepository(), true); // in core -> dry run
-		boolean requiredCustomMergeHandler = !merger
-				.merge(local, remote); // first we check if there are merge conflicts
+		RecursiveMerger merger = (RecursiveMerger) MergeStrategy.RECURSIVE.newMerger(git.getRepository(),
+				true); // in core -> dry run
+		boolean requiredCustomMergeHandler = !merger.merge(local,
+				remote); // first we check if there are merge conflicts
 
 		List<FileSyncHandle> fileSyncHandles = new ArrayList<>();
 
@@ -122,8 +122,7 @@ public class SyncTwoRefsWithMerge {
 				if (baseObject != null)
 					fileSyncHandle.setBaseBytes(baseObject.getBytes());
 				fileSyncHandles.add(fileSyncHandle);
-			} else if (!fileSyncHandle
-					.isUnmerged()) { // if not marked as unmrged yet, we might need to do it at this point
+			} else if (!fileSyncHandle.isUnmerged()) { // if not marked as unmrged yet, we might need to do it at this point
 				fileSyncHandle.setUnmerged(unmergedPaths.contains(basePath) || unmergedPaths.contains(remotePath));
 			}
 
@@ -136,8 +135,8 @@ public class SyncTwoRefsWithMerge {
 			preCustomMergeAction.call();
 
 		// after pull, we handle merge conflicts we predicted before
-		boolean requiredUserInteraction = customSyncHandler
-				.handleSync(git, requiredCustomMergeHandler, fileSyncHandles, dryRun);
+		boolean requiredUserInteraction = customSyncHandler.handleSync(git, requiredCustomMergeHandler, fileSyncHandles,
+				dryRun);
 
 		return new SyncResult(requiredCustomMergeHandler, requiredUserInteraction);
 	}
@@ -146,23 +145,6 @@ public class SyncTwoRefsWithMerge {
 		void call() throws GitAPIException;
 	}
 
-	public static class SyncResult {
-
-		private final boolean requiredCustomMergeHandler;
-		private final boolean requiredUserAction;
-
-		SyncResult(boolean requiredCustomMergeHandler, boolean requiredUserAction) {
-			this.requiredCustomMergeHandler = requiredCustomMergeHandler;
-			this.requiredUserAction = requiredUserAction;
-		}
-
-		public boolean wasCustomMergeHandlerRequired() {
-			return requiredCustomMergeHandler;
-		}
-
-		public boolean wasUserActionRequired() {
-			return requiredUserAction;
-		}
-	}
+	public record SyncResult(boolean requiredCustomMergeHandler, boolean requiredUserAction) {}
 
 }

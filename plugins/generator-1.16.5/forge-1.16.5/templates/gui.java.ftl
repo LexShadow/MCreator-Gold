@@ -39,7 +39,7 @@ package ${package}.gui;
 
 import ${package}.${JavaModName};
 
-@${JavaModName}Elements.ModElement.Tag public class ${name}Gui extends ${JavaModName}Elements.ModElement{
+@${JavaModName}Elements.ModElement.Tag public class ${name}Gui extends ${JavaModName}Elements.ModElement {
 
 	public static HashMap guistate = new HashMap();
 
@@ -195,7 +195,7 @@ import ${package}.${JavaModName};
             	        <#elseif component.getClass().getSimpleName() == "InputSlot">
 							<#if component.inputLimit.toString()?has_content>
             	             @Override public boolean isItemValid(ItemStack stack) {
-								 return (${mappedMCItemToItemStackCode(component.inputLimit,1)}.getItem() == stack.getItem());
+								 return (${mappedMCItemToItem(component.inputLimit)} == stack.getItem());
 							 }
 							</#if>
 						<#elseif component.getClass().getSimpleName() == "OutputSlot">

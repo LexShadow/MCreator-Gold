@@ -26,16 +26,16 @@ import net.mcreator.ui.MCreator;
 import net.mcreator.ui.MCreatorApplication;
 import net.mcreator.ui.component.util.ComponentUtils;
 import net.mcreator.ui.component.util.PanelUtils;
-import net.mcreator.ui.datapack.recipe.*;
 import net.mcreator.ui.help.HelpUtils;
 import net.mcreator.ui.init.L10N;
+import net.mcreator.ui.minecraft.recipemakers.*;
 import net.mcreator.ui.validation.AggregatedValidationResult;
 import net.mcreator.ui.validation.component.VComboBox;
 import net.mcreator.ui.validation.component.VTextField;
 import net.mcreator.ui.validation.validators.RegistryNameValidator;
 import net.mcreator.workspace.elements.ModElement;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
@@ -46,7 +46,7 @@ import java.util.Locale;
 
 public class RecipeGUI extends ModElementGUI<Recipe> {
 
-	private CraftingReciepeMaker rm;
+	private CraftingRecipeMaker rm;
 	private SmeltingRecipeMaker fm;
 	private BlastFurnaceRecipeMaker bm;
 	private SmokerRecipeMaker sm;
@@ -77,8 +77,7 @@ public class RecipeGUI extends ModElementGUI<Recipe> {
 	}
 
 	@Override protected void initGUI() {
-		rm = new CraftingReciepeMaker(mcreator, ElementUtil::loadBlocksAndItemsAndTags,
-				ElementUtil::loadBlocksAndItems);
+		rm = new CraftingRecipeMaker(mcreator, ElementUtil::loadBlocksAndItemsAndTags, ElementUtil::loadBlocksAndItems);
 		fm = new SmeltingRecipeMaker(mcreator, ElementUtil::loadBlocksAndItemsAndTags, ElementUtil::loadBlocksAndItems);
 		bm = new BlastFurnaceRecipeMaker(mcreator, ElementUtil::loadBlocksAndItemsAndTags,
 				ElementUtil::loadBlocksAndItems);
@@ -89,7 +88,8 @@ public class RecipeGUI extends ModElementGUI<Recipe> {
 				ElementUtil::loadBlocksAndItems);
 		smcm = new SmithingRecipeMaker(mcreator, ElementUtil::loadBlocksAndItemsAndTags,
 				ElementUtil::loadBlocksAndItems);
-		brm = new BrewingRecipeMaker(mcreator, ElementUtil::loadBlocksAndItemsAndTags, ElementUtil::loadBlocksAndItems);
+		brm = new BrewingRecipeMaker(mcreator, ElementUtil::loadBlocksAndItemsAndTagsAndPotions,
+				ElementUtil::loadBlocksAndItemsAndTags, ElementUtil::loadBlocksAndItemsAndPotions);
 
 		rm.setOpaque(false);
 		fm.setOpaque(false);
@@ -151,24 +151,24 @@ public class RecipeGUI extends ModElementGUI<Recipe> {
 		JPanel northPanel = new JPanel(new GridLayout(6, 2, 10, 2));
 		northPanel.setOpaque(false);
 
-		northPanel
-				.add(HelpUtils.wrapWithHelpButton(this.withEntry("recipe/type"), L10N.label("elementgui.recipe.type")));
+		northPanel.add(
+				HelpUtils.wrapWithHelpButton(this.withEntry("recipe/type"), L10N.label("elementgui.recipe.type")));
 		northPanel.add(recipeType);
 
 		northPanel.add(HelpUtils.wrapWithHelpButton(this.withEntry("recipe/registry_name"),
 				L10N.label("elementgui.recipe.registry_name")));
 		northPanel.add(name);
 
-		northPanel.add(HelpUtils
-				.wrapWithHelpButton(this.withEntry("recipe/namespace"), L10N.label("elementgui.recipe.name_space")));
+		northPanel.add(HelpUtils.wrapWithHelpButton(this.withEntry("recipe/namespace"),
+				L10N.label("elementgui.recipe.name_space")));
 		northPanel.add(namespace);
 
-		northPanel.add(HelpUtils
-				.wrapWithHelpButton(this.withEntry("recipe/group_name"), L10N.label("elementgui.recipe.group")));
+		northPanel.add(HelpUtils.wrapWithHelpButton(this.withEntry("recipe/group_name"),
+				L10N.label("elementgui.recipe.group")));
 		northPanel.add(group);
 
-		northPanel.add(HelpUtils
-				.wrapWithHelpButton(this.withEntry("recipe/xp_reward"), L10N.label("elementgui.recipe.xp_reward")));
+		northPanel.add(HelpUtils.wrapWithHelpButton(this.withEntry("recipe/xp_reward"),
+				L10N.label("elementgui.recipe.xp_reward")));
 		northPanel.add(xpReward);
 
 		northPanel.add(HelpUtils.wrapWithHelpButton(this.withEntry("recipe/cooking_time"),
@@ -185,11 +185,11 @@ public class RecipeGUI extends ModElementGUI<Recipe> {
 		recipeType.addActionListener(e -> {
 			if (recipeType.getSelectedItem() != null) {
 				xpReward.setEnabled(!recipeType.getSelectedItem().equals("Crafting") && !recipeType.getSelectedItem()
-						.equals("Stone cutting") && !recipeType.getSelectedItem().equals("Smithing") && !recipeType
-						.getSelectedItem().equals("Brewing"));
+						.equals("Stone cutting") && !recipeType.getSelectedItem().equals("Smithing")
+						&& !recipeType.getSelectedItem().equals("Brewing"));
 				cookingTime.setEnabled(!recipeType.getSelectedItem().equals("Crafting") && !recipeType.getSelectedItem()
-						.equals("Stone cutting") && !recipeType.getSelectedItem().equals("Smithing") && !recipeType
-						.getSelectedItem().equals("Brewing"));
+						.equals("Stone cutting") && !recipeType.getSelectedItem().equals("Smithing")
+						&& !recipeType.getSelectedItem().equals("Brewing"));
 
 				group.setEnabled(!recipeType.getSelectedItem().equals("Brewing"));
 
@@ -201,8 +201,8 @@ public class RecipeGUI extends ModElementGUI<Recipe> {
 					}
 				}
 
-				recipesPanelLayout
-						.show(recipesPanel, recipeType.getSelectedItem().toString().toLowerCase(Locale.ENGLISH));
+				recipesPanelLayout.show(recipesPanel,
+						recipeType.getSelectedItem().toString().toLowerCase(Locale.ENGLISH));
 			}
 		});
 
@@ -216,9 +216,9 @@ public class RecipeGUI extends ModElementGUI<Recipe> {
 		if ("Crafting".equals(recipeType.getSelectedItem())) {
 			if (!rm.cb10.containsItem()) {
 				return new AggregatedValidationResult.FAIL(L10N.t("elementgui.recipe.error_crafting_no_result"));
-			} else if (!(rm.cb1.containsItem() || rm.cb2.containsItem() || rm.cb3.containsItem() || rm.cb4
-					.containsItem() || rm.cb5.containsItem() || rm.cb6.containsItem() || rm.cb7.containsItem() || rm.cb8
-					.containsItem() || rm.cb9.containsItem())) {
+			} else if (!(rm.cb1.containsItem() || rm.cb2.containsItem() || rm.cb3.containsItem()
+					|| rm.cb4.containsItem() || rm.cb5.containsItem() || rm.cb6.containsItem() || rm.cb7.containsItem()
+					|| rm.cb8.containsItem() || rm.cb9.containsItem())) {
 				return new AggregatedValidationResult.FAIL(L10N.t("elementgui.recipe.error_crafting_no_ingredient"));
 			}
 		} else if ("Smelting".equals(recipeType.getSelectedItem())) {
@@ -379,7 +379,7 @@ public class RecipeGUI extends ModElementGUI<Recipe> {
 		return recipe;
 	}
 
-	@Override public @Nullable URI getContextURL() throws URISyntaxException {
+	@Override public @Nullable URI contextURL() throws URISyntaxException {
 		return new URI(MCreatorApplication.SERVER_DOMAIN + "/wiki/how-make-recipe");
 	}
 

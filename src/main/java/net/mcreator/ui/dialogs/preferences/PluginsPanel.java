@@ -42,7 +42,7 @@ class PluginsPanel {
 	private final DefaultListModel<Plugin> tmodel = new DefaultListModel<>();
 
 	PluginsPanel(PreferencesDialog preferencesDialog) {
-		preferencesDialog.model.addElement("Manage plugins");
+		preferencesDialog.model.addElement(L10N.t("dialog.preferences.page_plugins"));
 
 		JList<Plugin> plugins = new JList<>(tmodel);
 		plugins.setCellRenderer(new PluginsListCellRenderer());
@@ -63,8 +63,8 @@ class PluginsPanel {
 		add.addActionListener(e -> {
 			File[] files = FileDialogs.getMultiOpenDialog(preferencesDialog, new String[] { ".zip" });
 			if (files != null && files.length > 0) {
-				Arrays.stream(files).forEach(f -> FileIO
-						.copyFile(f, new File(UserFolderManager.getFileFromUserFolder("plugins"), f.getName())));
+				Arrays.stream(files).forEach(f -> FileIO.copyFile(f,
+						new File(UserFolderManager.getFileFromUserFolder("plugins"), f.getName())));
 				PluginLoader.initInstance(); // reload plugin loader
 				reloadPluginList();
 			}
@@ -79,9 +79,18 @@ class PluginsPanel {
 
 		reloadPluginList();
 
+		JButton openPluginFolder = L10N.button("dialog.preferences.open_folder",
+				L10N.t("dialog.preferences.plugins").toLowerCase());
+		openPluginFolder.setIcon(UIRES.get("16px.open.gif"));
+		opts.add(openPluginFolder);
+		opts.add(new JEmptyBox(5, 5));
+
+		openPluginFolder.addActionListener(
+				e -> DesktopUtils.openSafe(UserFolderManager.getFileFromUserFolder("plugins")));
+
 		sectionPanel.add("Center", PanelUtils.northAndCenterElement(opts, new JScrollPane(plugins), 5, 5));
 
-		preferencesDialog.preferences.add(sectionPanel, "Manage plugins");
+		preferencesDialog.preferences.add(sectionPanel, L10N.t("dialog.preferences.page_plugins"));
 	}
 
 	private void reloadPluginList() {
@@ -108,18 +117,20 @@ class PluginsPanel {
 
 			if ((value.getInfo().getAuthor() != null) && (value.getInfo().getName() != null) && (value.getInfo()
 					.getCredits().equals("None"))) {
-				setText("<html>" + value.getInfo().getName() + "<br><small>ID: " + value.getID() + ", version: " + value
-						.getPluginVersion() + ", author: " + value.getInfo().getAuthor() + ", loaded: " + (value
-						.isLoaded() ? "<html><font color=#a7ed1a>yes</font>" : "<html><font color=#f24122>no</font>"));
+				setText("<html>" + value.getInfo().getName() + "<br><small>ID: " + value.getID() + ", version: "
+						+ value.getPluginVersion() + ", author: " + value.getInfo().getAuthor() + ", loaded: "
+						+ (value.isLoaded() ?
+						"<html><font color=#a7ed1a>yes</font>" :
+						"<html><font color=#f24122>no</font>"));
 			} else if (value.getInfo().getAuthor() != null)
-				setText("<html>" + value.getInfo().getName() + "<br><small>ID: " + value.getID() + ", version: " + value
-						.getPluginVersion() + ", author: " + value.getInfo().getAuthor() + ", credit: " + value
-						.getInfo().getCredits() + ", loaded: " + (value.isLoaded() ?
+				setText("<html>" + value.getInfo().getName() + "<br><small>ID: " + value.getID() + ", version: "
+						+ value.getPluginVersion() + ", author: " + value.getInfo().getAuthor() + ", credit: "
+						+ value.getInfo().getCredits() + ", loaded: " + (value.isLoaded() ?
 						"<html><font color=#a7ed1a>yes</font>" :
 						"<html><font color=#f24122>no</font>"));
 			else
-				setText("<html>" + value.getInfo().getName() + "<br><small>ID: " + value.getID() + ", version: " + value
-						.getPluginVersion() + ", loaded: " + (value.isLoaded() ?
+				setText("<html>" + value.getInfo().getName() + "<br><small>ID: " + value.getID() + ", version: "
+						+ value.getPluginVersion() + ", loaded: " + (value.isLoaded() ?
 						"<html><font color=#a7ed1a>yes</font>" :
 						"<html><font color=#f24122>no</font>"));
 

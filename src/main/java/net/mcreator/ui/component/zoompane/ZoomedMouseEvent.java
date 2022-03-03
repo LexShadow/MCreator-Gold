@@ -27,12 +27,14 @@ public class ZoomedMouseEvent extends MouseEvent {
 	private final Point2D viewPosition;
 	private final double zoom;
 
-	public ZoomedMouseEvent(MouseEvent event, JZoomport zoomport) throws NullPointerException {
-		super(zoomport.getToZoom(), event.getID(), event.getWhen(), event.getModifiers(), (int) Math
-						.floor((event.getX() - zoomport.getCanvasX() + zoomport.getViewPositionX()) / zoomport.getZoom()),
-				(int) Math.floor((event.getY() - zoomport.getCanvasY() + zoomport.getViewPositionY()) / zoomport
-						.getZoom()), event.getXOnScreen(), event.getYOnScreen(), event.getClickCount(),
-				event.isPopupTrigger(), event.getButton());
+	@SuppressWarnings("deprecation") public ZoomedMouseEvent(MouseEvent event, JZoomport zoomport)
+			throws NullPointerException {
+		super(zoomport.getToZoom(), event.getID(), event.getWhen(), event.getModifiers(), (int) Math.floor(
+						(event.getX() - zoomport.getCanvasX() + zoomport.getViewPositionX()) / zoomport.getZoom()),
+				(int) Math.floor(
+						(event.getY() - zoomport.getCanvasY() + zoomport.getViewPositionY()) / zoomport.getZoom()),
+				event.getXOnScreen(), event.getYOnScreen(), event.getClickCount(), event.isPopupTrigger(),
+				event.getButton());
 		mousePosition = event.getPoint();
 		canvasPosition = zoomport.getCanvasPoint();
 		viewPosition = zoomport.getViewPositionPoint();

@@ -19,39 +19,41 @@
 package net.mcreator.blockly.java;
 
 import net.mcreator.blockly.BlocklyCompileNote;
+import net.mcreator.ui.init.L10N;
 import net.mcreator.util.XMLUtil;
+import net.mcreator.workspace.Workspace;
 import net.mcreator.workspace.elements.VariableElement;
-import net.mcreator.workspace.elements.VariableElementType;
+import net.mcreator.workspace.elements.VariableType;
+import net.mcreator.workspace.elements.VariableTypeLoader;
 import org.w3c.dom.Element;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class BlocklyVariables {
+public record BlocklyVariables(BlocklyToJava generator) {
 
-	private final BlocklyToJava generator;
-
-	BlocklyVariables(BlocklyToJava generator) {
-		this.generator = generator;
-	}
-
-	List<String> processLocalVariables(Element variables_block) {
-		List<String> varlist = new ArrayList<>();
+	List<VariableElement> processLocalVariables(Element variables_block) {
+		List<VariableElement> varlist = new ArrayList<>();
 
 		if (variables_block != null) {
 			List<Element> variables = XMLUtil.getChildrenWithName(variables_block, "variable");
 			for (Element variable : variables) {
 				String type = variable.getAttribute("type");
 				String name = variable.getAttribute("id");
-				if (JavaKeywordsMap.VARIABLE_TYPES.get(type) != null && name != null) {
-					generator.append(JavaKeywordsMap.VARIABLE_TYPES.get(type)[0]).append(" ").append(name).append(" = ")
-							.append(JavaKeywordsMap.VARIABLE_TYPES.get(type)[1]).append(";\n");
-
-					// add variable to the array of variables
-					varlist.add(name);
+				VariableType variableType = VariableTypeLoader.INSTANCE.fromName(type);
+				if (variableType != null && variableType.getBlocklyVariableType() != null && name != null) {
+					VariableElement element = new VariableElement();
+					element.setName(name);
+					element.setType(variableType);
+					element.setScope(VariableType.Scope.LOCAL);
+					varlist.add(element); // add variable to the array of variables
 				} else {
-					generator.addCompileNote(
-							new BlocklyCompileNote(BlocklyCompileNote.Type.WARNING, "Skipping unknown variable type!"));
+					generator.addCompileNote(new BlocklyCompileNote(BlocklyCompileNote.Type.WARNING,
+							L10N.t("blockly.warnings.skip_unknown_var_type")));
 				}
 			}
 		}
@@ -59,32 +61,35 @@ public class BlocklyVariables {
 		return varlist;
 	}
 
-	public static String getBlocklyVariableTypeFromMCreatorVariable(VariableElement variable) {
-		switch (variable.getType()) {
-		case NUMBER:
-			return "Number";
-		case ITEMSTACK:
-			return "MCItem";
-		case LOGIC:
-			return "Boolean";
-		case STRING:
-			return "String";
+	public static boolean isPlayerVariableForWorkspace(Workspace workspace, String field) {
+		if (field == null)
+			return false;
+		String[] name = field.split(":");
+		if (name.length == 2 && name[0].equals("global")) {
+			VariableType.Scope scope = workspace.getVariableElementByName(name[1]).getScope();
+			return scope == VariableType.Scope.PLAYER_LIFETIME || scope == VariableType.Scope.PLAYER_PERSISTENT;
 		}
-		return null;
+		return false;
 	}
 
-	public static VariableElementType getMCreatorVariableTypeFromBlocklyVariableType(String blocklyType) {
-		switch (blocklyType) {
-		case "Number":
-			return VariableElementType.NUMBER;
-		case "Boolean":
-			return VariableElementType.LOGIC;
-		case "String":
-			return VariableElementType.STRING;
-		case "MCItem":
-			return VariableElementType.ITEMSTACK;
+	public static Set<VariableElement> tryToExtractVariables(String xml) {
+		Set<VariableElement> retval = new HashSet<>();
+		for (VariableType elementType : VariableTypeLoader.INSTANCE.getAllVariableTypes()) {
+			Matcher m = Pattern.compile("<block type=\"(?:variables_set_" + elementType.getName() + "|variables_get_"
+							+ elementType.getName() + ")\">(?:<mutation.*?\"/>)?<field name=\"VAR\">local:(.*?)</field>")
+					.matcher(xml);
+
+			try {
+				while (m.find()) {
+					VariableElement element = new VariableElement();
+					element.setName(m.group(1));
+					element.setType(elementType);
+					retval.add(element);
+				}
+			} catch (Exception ignored) {
+			}
 		}
-		return null;
+		return retval;
 	}
 
 }

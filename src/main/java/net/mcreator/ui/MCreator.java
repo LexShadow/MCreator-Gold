@@ -31,10 +31,10 @@ import net.mcreator.ui.action.impl.workspace.RegenerateCodeAction;
 import net.mcreator.ui.browser.WorkspaceFileBrowser;
 import net.mcreator.ui.component.ImagePanel;
 import net.mcreator.ui.component.util.EDTUtils;
-import net.mcreator.ui.component.util.MacOSUIUtil;
 import net.mcreator.ui.component.util.PanelUtils;
 import net.mcreator.ui.dialogs.workspace.WorkspaceGeneratorSetupDialog;
 import net.mcreator.ui.gradle.GradleConsole;
+import net.mcreator.ui.init.BackgroundLoader;
 import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.init.UIRES;
 import net.mcreator.ui.workspace.WorkspacePanel;
@@ -47,19 +47,18 @@ import net.mcreator.workspace.ShareableZIPManager;
 import net.mcreator.workspace.Workspace;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import javax.imageio.ImageIO;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Locale;
 
 public final class MCreator extends JFrame implements IWorkspaceProvider, IGeneratorProvider {
 
@@ -86,7 +85,7 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 
 	private final long windowUID;
 
-	public MCreator(@Nullable MCreatorApplication application, @NotNull Workspace workspace) {
+	public MCreator(@Nullable MCreatorApplication application, @Nonnull Workspace workspace) {
 		LOG.info("Opening MCreator workspace: " + workspace.getWorkspaceSettings().getModID());
 
 		this.windowUID = System.currentTimeMillis();
@@ -127,7 +126,9 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 		setLayout(new BorderLayout(0, 0));
 
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-		if (screenSize.getWidth() > 1574 && screenSize.getHeight() > 970)
+		if (screenSize.getWidth() > 2140 && screenSize.getHeight() > 1250)
+			setSize(2140, 1250);
+		else if (screenSize.getWidth() > 1574 && screenSize.getHeight() > 970)
 			setSize(1574, 967);
 		else if (screenSize.getWidth() > 1290 && screenSize.getHeight() > 795)
 			setSize(1290, 791);
@@ -135,12 +136,12 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 			setSize(1002, 640);
 
 		if (OS.getOS() == OS.MAC)
-			MacOSUIUtil.enableTrueFullscreen(this);
+			getRootPane().putClientProperty("apple.awt.fullscreenable", true);
 
 		if (PreferencesManager.PREFERENCES.hidden.fullScreen)
 			setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-		setIconImage(UIRES.get("icon").getImage());
+		setIconImage(UIRES.getBuiltIn("icon").getImage());
 		setLocationRelativeTo(null);
 
 		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
@@ -164,25 +165,31 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 		UserFolderManager.getFileFromUserFolder("backgrounds").mkdirs();
 
 		JPanel mpan;
-		File[] bgfiles = UserFolderManager.getFileFromUserFolder("backgrounds").listFiles();
-		List<File> bgimages = new ArrayList<>();
-		if (bgfiles != null) {
-			bgimages = Arrays.stream(bgfiles).filter(e -> e.getName().endsWith(".png")).collect(Collectors.toList());
+
+		// Load backgrounds depending on the background source
+		List<Image> bgimages = new ArrayList<>();
+		switch (PreferencesManager.PREFERENCES.ui.backgroundSource) {
+		case "All":
+			bgimages.addAll(BackgroundLoader.loadThemeBackgrounds());
+			bgimages.addAll(BackgroundLoader.loadUserBackgrounds());
+			break;
+		case "Current theme":
+			bgimages = BackgroundLoader.loadThemeBackgrounds();
+			break;
+		case "Custom":
+			bgimages = BackgroundLoader.loadUserBackgrounds();
+			break;
 		}
 
 		Image bgimage = null;
 		if (bgimages.size() > 0) {
-			try {
-				bgimage = ImageIO.read(ListUtils.getRandomItem(bgimages));
-				float avg = ImageUtils.getAverageLuminance(ImageUtils.toBufferedImage(bgimage));
-				if (avg > 0.15) {
-					avg = (float) Math.min(avg * 1.7, 0.85);
-					bgimage = ImageUtils.drawOver(new ImageIcon(bgimage), new ImageIcon(ImageUtils
-							.emptyImageWithSize(bgimage.getWidth(this), bgimage.getHeight(this),
-									new Color(0.12f, 0.12f, 0.12f, avg)))).getImage();
-				}
-			} catch (IOException e) {
-				LOG.warn("Failed to load background image", e);
+			bgimage = ListUtils.getRandomItem(bgimages);
+			float avg = ImageUtils.getAverageLuminance(ImageUtils.toBufferedImage(bgimage));
+			if (avg > 0.15) {
+				avg = (float) Math.min(avg * 1.7, 0.85);
+				bgimage = ImageUtils.drawOver(new ImageIcon(bgimage), new ImageIcon(
+						ImageUtils.emptyImageWithSize(bgimage.getWidth(this), bgimage.getHeight(this),
+								new Color(0.12f, 0.12f, 0.12f, avg)))).getImage();
 			}
 		}
 
@@ -230,7 +237,7 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 		consoleTab.setHasRightBorder(false);
 		consoleTab.addMouseListener(new MouseAdapter() {
 			@Override public void mouseClicked(MouseEvent e) {
-				if (((e.getModifiers() & ActionEvent.CTRL_MASK) == ActionEvent.CTRL_MASK))
+				if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) == InputEvent.CTRL_DOWN_MASK)
 					actionRegistry.buildWorkspace.doAction();
 			}
 		});
@@ -283,8 +290,8 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 
 			// if we need to setup MCreator, we do so
 			if (WorkspaceGeneratorSetup.shouldSetupBeRan(workspace.getGenerator())) {
-				WorkspaceGeneratorSetupDialog
-						.runSetup(this, PreferencesManager.PREFERENCES.notifications.openWhatsNextPage);
+				WorkspaceGeneratorSetupDialog.runSetup(this,
+						PreferencesManager.PREFERENCES.notifications.openWhatsNextPage);
 			}
 
 			if (workspace.getMCreatorVersion()
@@ -312,7 +319,7 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 		return workspaceFileBrowser;
 	}
 
-	@Override public @NotNull Workspace getWorkspace() {
+	@Override public @Nonnull Workspace getWorkspace() {
 		return workspace;
 	}
 
@@ -320,7 +327,7 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 		return statusBar;
 	}
 
-	public final boolean closeThisMCreator(boolean returnToProjectSelector) {
+	public boolean closeThisMCreator(boolean returnToProjectSelector) {
 		boolean safetoexit = gradleConsole.getStatus() != GradleConsole.RUNNING;
 		if (!safetoexit) {
 			if (gradleConsole.isGradleSetupTaskRunning()) {
@@ -329,10 +336,10 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 				return false;
 			}
 
-			int reply = JOptionPane
-					.showConfirmDialog(this, L10N.t("action.gradle.close_mcreator_while_running_message"),
-							L10N.t("action.gradle.close_mcreator_while_running_title"), JOptionPane.YES_NO_OPTION,
-							JOptionPane.WARNING_MESSAGE, null);
+			int reply = JOptionPane.showConfirmDialog(this,
+					L10N.t("action.gradle.close_mcreator_while_running_message"),
+					L10N.t("action.gradle.close_mcreator_while_running_title"), JOptionPane.YES_NO_OPTION,
+					JOptionPane.WARNING_MESSAGE, null);
 			if (reply == JOptionPane.YES_OPTION) {
 				safetoexit = true;
 				gradleConsole.cancelTask();
@@ -343,8 +350,7 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 			LOG.info("Closing MCreator window ...");
 			PreferencesManager.PREFERENCES.hidden.fullScreen = getExtendedState() == MAXIMIZED_BOTH;
 			if (splitPane != null)
-				PreferencesManager.PREFERENCES.hidden.projectTreeSplitPos = splitPane
-						.getDividerLocation(); // this one could be stored per workspace in the future
+				PreferencesManager.PREFERENCES.hidden.projectTreeSplitPos = splitPane.getDividerLocation(); // this one could be stored per workspace in the future
 
 			workspace.close();
 
@@ -385,8 +391,7 @@ public final class MCreator extends JFrame implements IWorkspaceProvider, IGener
 	}
 
 	@Override public boolean equals(Object mcreator) {
-		if (mcreator instanceof MCreator) {
-			MCreator theothermcreator = (MCreator) mcreator;
+		if (mcreator instanceof MCreator theothermcreator) {
 			if (theothermcreator.workspace != null && workspace != null)
 				return theothermcreator.workspace.getFileManager().getWorkspaceFile()
 						.equals(workspace.getFileManager().getWorkspaceFile());

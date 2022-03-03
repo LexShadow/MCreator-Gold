@@ -4,7 +4,7 @@ license="${settings.getLicense()}"
 
 [[mods]]
 modId="${settings.getModID()}"
-version="${settings.getVersion()}"
+version="${settings.getCleanVersion()}"
 displayName="${settings.getModName()}"
 credits="${settings.getCredits()}"
 displayURL="${settings.getWebsiteURL()}"
@@ -52,6 +52,7 @@ ${settings.getDescription()}
 [[dependencies.${settings.getModID()}]]
     modId="${e}"
     mandatory=false
+    versionRange="[0,)"
     ordering="NONE"
     side="BOTH"
 </#list>
@@ -60,6 +61,7 @@ ${settings.getDescription()}
 [[dependencies.${settings.getModID()}]]
     modId="${e}"
     mandatory=false
+    versionRange="[0,)"
     ordering="NONE"
     side="BOTH"
 </#list>

@@ -23,25 +23,20 @@ import net.mcreator.minecraft.RegistryNameFixer;
 import net.mcreator.ui.MCreator;
 import net.mcreator.ui.MCreatorApplication;
 import net.mcreator.ui.component.util.PanelUtils;
-import net.mcreator.ui.datapack.loottable.JLootTablePool;
 import net.mcreator.ui.help.HelpUtils;
 import net.mcreator.ui.init.L10N;
-import net.mcreator.ui.init.UIRES;
+import net.mcreator.ui.minecraft.loottable.JLootTablePoolsList;
 import net.mcreator.ui.validation.AggregatedValidationResult;
 import net.mcreator.ui.validation.component.VComboBox;
 import net.mcreator.ui.validation.validators.RegistryNameValidator;
 import net.mcreator.workspace.elements.ModElement;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import javax.swing.*;
 import java.awt.*;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class LootTableGUI extends ModElementGUI<LootTable> {
 
@@ -49,11 +44,10 @@ public class LootTableGUI extends ModElementGUI<LootTable> {
 	private final VComboBox<String> name = new VComboBox<>();
 
 	private final JComboBox<String> type = new JComboBox<>(
-			new String[] { "Generic", "Entity", "Block", "Chest", "Fishing", "Empty", "Advancement reward" });
+			new String[] { "Block", "Entity", "Generic", "Chest", "Fishing", "Empty", "Advancement reward", "Gift",
+					"Barter" });
 
-	private final List<JLootTablePool> poolList = new ArrayList<>();
-
-	private final JPanel pools = new JPanel(new GridLayout(0, 1, 5, 5));
+	private JLootTablePoolsList lootTablePools;
 
 	public LootTableGUI(MCreator mcreator, ModElement modElement, boolean editingMode) {
 		super(mcreator, modElement, editingMode);
@@ -65,15 +59,13 @@ public class LootTableGUI extends ModElementGUI<LootTable> {
 		JPanel pane3 = new JPanel(new BorderLayout());
 		pane3.setOpaque(false);
 
-		name.setValidator(new RegistryNameValidator(name, L10N.t("elementgui.loot_table.name"))
-				.setValidChars(Arrays.asList('_', '/')));
+		name.setValidator(new RegistryNameValidator(name, L10N.t("elementgui.loot_table.name")).setValidChars(
+				Arrays.asList('_', '/')));
 		name.enableRealtimeValidation();
 
 		name.addItem("blocks/stone");
-		name.addItem("chests/abandoned_mineshaft");
 		name.addItem("entities/chicken");
 		name.addItem("gameplay/fishing");
-		name.addItem("gameplay/hero_of_the_village/armorer_gift");
 
 		name.setEditable(true);
 		name.setOpaque(false);
@@ -82,7 +74,30 @@ public class LootTableGUI extends ModElementGUI<LootTable> {
 			name.setEnabled(false);
 			namespace.setEnabled(false);
 		} else {
-			name.getEditor().setItem(RegistryNameFixer.fromCamelCase(modElement.getName()));
+			name.getEditor().setItem("blocks/" + RegistryNameFixer.fromCamelCase(modElement.getName()));
+
+			type.addActionListener(e -> {
+				String currName = name.getEditor().getItem().toString();
+				String currNameNoType = currName == null ? "" : currName.split("/")[currName.split("/").length - 1];
+				if (type.getSelectedItem() != null)
+					switch (type.getSelectedItem().toString()) {
+					case "Block":
+						name.getEditor().setItem("blocks/" + currNameNoType);
+						break;
+					case "Chest":
+						name.getEditor().setItem("chests/" + currNameNoType);
+						break;
+					case "Entity":
+					case "Gift":
+					case "Barter":
+					case "Advancement reward":
+						name.getEditor().setItem("entities/" + currNameNoType);
+						break;
+					default:
+						name.getEditor().setItem("gameplay/" + currNameNoType);
+						break;
+					}
+			});
 		}
 
 		JPanel northPanel = new JPanel(new GridLayout(3, 2, 10, 2));
@@ -96,54 +111,23 @@ public class LootTableGUI extends ModElementGUI<LootTable> {
 				L10N.label("elementgui.loot_table.namespace")));
 		northPanel.add(namespace);
 
-		northPanel.add(HelpUtils
-				.wrapWithHelpButton(this.withEntry("loottable/type"), L10N.label("elementgui.loot_table.type")));
+		northPanel.add(HelpUtils.wrapWithHelpButton(this.withEntry("loottable/type"),
+				L10N.label("elementgui.loot_table.type")));
 		northPanel.add(type);
 
-		JPanel maineditor = new JPanel(new BorderLayout());
-		maineditor.setOpaque(false);
+		lootTablePools = new JLootTablePoolsList(mcreator, this);
 
-		JToolBar bar = new JToolBar();
-		bar.setFloatable(false);
-
-		JButton addPool = L10N.button("elementgui.loot_table.add_pool");
-		addPool.setIcon(UIRES.get("16px.add.gif"));
-		bar.add(addPool);
-
-		maineditor.add("North", bar);
-
-		pools.setOpaque(false);
-
-		JScrollPane sp = new JScrollPane(PanelUtils.pullElementUp(pools)) {
-			@Override protected void paintComponent(Graphics g) {
-				Graphics2D g2d = (Graphics2D) g.create();
-				g2d.setColor((Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT"));
-				g2d.setComposite(AlphaComposite.SrcOver.derive(0.45f));
-				g2d.fillRect(0, 0, getWidth(), getHeight());
-				g2d.dispose();
-				super.paintComponent(g);
-			}
-		};
-		sp.setOpaque(false);
-		sp.getViewport().setOpaque(false);
-		sp.getVerticalScrollBar().setUnitIncrement(11);
-		sp.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-		maineditor.add("Center", sp);
-
-		pane3.add(PanelUtils.northAndCenterElement(PanelUtils.join(FlowLayout.LEFT, northPanel), maineditor));
+		pane3.add(PanelUtils.northAndCenterElement(PanelUtils.join(FlowLayout.LEFT, northPanel), lootTablePools));
 		addPage(pane3);
 
-		addPool.addActionListener(e -> new JLootTablePool(mcreator, pools, poolList).addInitialEntry());
-
 		// add first pool
-		if (!isEditingMode()) {
-			new JLootTablePool(mcreator, pools, poolList).addInitialEntry();
-		}
+		if (!isEditingMode())
+			lootTablePools.addInitialPool();
 	}
 
 	@Override public void reloadDataLists() {
 		super.reloadDataLists();
-		poolList.forEach(JLootTablePool::reloadDataLists);
+		lootTablePools.reloadDataLists();
 	}
 
 	@Override protected AggregatedValidationResult validatePage(int page) {
@@ -156,7 +140,7 @@ public class LootTableGUI extends ModElementGUI<LootTable> {
 		namespace.setSelectedItem(loottable.namespace);
 		name.getEditor().setItem(loottable.name);
 
-		loottable.pools.forEach(e -> new JLootTablePool(mcreator, pools, poolList).setPool(e));
+		lootTablePools.setPools(loottable.pools);
 	}
 
 	@Override public LootTable getElementFromGUI() {
@@ -167,13 +151,12 @@ public class LootTableGUI extends ModElementGUI<LootTable> {
 		loottable.namespace = (String) namespace.getSelectedItem();
 		loottable.name = name.getEditor().getItem().toString();
 
-		loottable.pools = poolList.stream().map(JLootTablePool::getPool).filter(Objects::nonNull)
-				.collect(Collectors.toList());
+		loottable.pools = lootTablePools.getPools();
 
 		return loottable;
 	}
 
-	@Override public @Nullable URI getContextURL() throws URISyntaxException {
+	@Override public @Nullable URI contextURL() throws URISyntaxException {
 		return new URI(MCreatorApplication.SERVER_DOMAIN + "/wiki/how-make-loot-table");
 	}
 

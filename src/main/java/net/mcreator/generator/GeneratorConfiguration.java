@@ -27,9 +27,9 @@ import net.mcreator.io.FileIO;
 import net.mcreator.plugin.PluginLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -54,11 +54,9 @@ public class GeneratorConfiguration implements Comparable<GeneratorConfiguration
 
 	private final GeneratorFlavor generatorFlavor;
 
-	private final TemplateGeneratorConfiguration templateGeneratorConfiguration;
-	private final TemplateGeneratorConfiguration procedureGeneratorConfiguration;
-	private final TemplateGeneratorConfiguration triggerGeneratorConfiguration;
-	private final TemplateGeneratorConfiguration aitaskGeneratorConfiguration;
-	private final TemplateGeneratorConfiguration jsonTriggerGeneratorConfiguration;
+	private final GeneratorVariableTypes generatorVariableTypes;
+
+	private final Map<String, TemplateGeneratorConfiguration> templateGeneratorConfigs = new HashMap<>();
 
 	public GeneratorConfiguration(String generatorName) {
 		this.generatorName = generatorName;
@@ -81,21 +79,17 @@ public class GeneratorConfiguration implements Comparable<GeneratorConfiguration
 		this.mappingLoader = new MappingLoader(this);
 		this.definitionsProvider = new DefinitionsProvider(generatorName);
 
-		// load template configurations
-		this.templateGeneratorConfiguration = new TemplateGeneratorConfiguration(generatorName, "templates");
-		this.procedureGeneratorConfiguration = new TemplateGeneratorConfiguration(generatorName, "procedures");
-		this.triggerGeneratorConfiguration = new TemplateGeneratorConfiguration(generatorName, "triggers");
-		this.aitaskGeneratorConfiguration = new TemplateGeneratorConfiguration(generatorName, "aitasks");
-		this.jsonTriggerGeneratorConfiguration = new TemplateGeneratorConfiguration(generatorName, "jsontriggers");
+		// load global variable definitions
+		this.generatorVariableTypes = new GeneratorVariableTypes(this);
 
 		this.generatorStats = new GeneratorStats(this);
 	}
 
-	@NotNull public String getSourceRoot() {
+	@Nonnull public String getSourceRoot() {
 		return (String) generatorConfig.get("source_root");
 	}
 
-	@NotNull public String getResourceRoot() {
+	@Nonnull public String getResourceRoot() {
 		return (String) generatorConfig.get("res_root");
 	}
 
@@ -111,12 +105,16 @@ public class GeneratorConfiguration implements Comparable<GeneratorConfiguration
 		return (String) generatorConfig.get(root);
 	}
 
-	@NotNull public String getGeneratorMinecraftVersion() {
+	@Nonnull public String getGeneratorMinecraftVersion() {
 		return this.generatorName.split("-")[1];
 	}
 
-	@NotNull public String getGeneratorBuildFileVersion() {
+	@Nonnull public String getGeneratorBuildFileVersion() {
 		return generatorConfig.get("buildfileversion") != null ? (String) generatorConfig.get("buildfileversion") : "";
+	}
+
+	@Nullable public String getGeneratorSubVersion() {
+		return (String) generatorConfig.get("subversion");
 	}
 
 	public Map<?, ?> getStardIDMap() {
@@ -153,13 +151,51 @@ public class GeneratorConfiguration implements Comparable<GeneratorConfiguration
 		return (List<?>) generatorConfig.get("resources_setup_tasks");
 	}
 
+	@Nullable public List<?> getSourceSetupTasks() {
+		return (List<?>) generatorConfig.get("sources_setup_tasks");
+	}
+
+	public String getJavaModelsKey() {
+		return generatorConfig.get("java_models") != null ?
+				((Map<?, ?>) generatorConfig.get("java_models")).get("key").toString() :
+				"legacy";
+	}
+
+	public List<String> getCompatibleJavaModelKeys() {
+		List<String> retval = new ArrayList<>();
+		retval.add(getJavaModelsKey());
+
+		if (generatorConfig.get("java_models") != null) {
+			if (((Map<?, ?>) generatorConfig.get("java_models")).get("compatible") != null) {
+				retval.addAll(((List<?>) ((Map<?, ?>) generatorConfig.get("java_models")).get("compatible")).stream()
+						.map(Object::toString).toList());
+			}
+		}
+
+		return retval;
+	}
+
+	public List<String> getJavaModelRequirementKeyWords() {
+		List<String> retval = new ArrayList<>();
+
+		if (generatorConfig.get("java_models") != null) {
+			if (((Map<?, ?>) generatorConfig.get("java_models")).get("requested_key_words") != null) {
+				retval.addAll(
+						((List<?>) ((Map<?, ?>) generatorConfig.get("java_models")).get("requested_key_words")).stream()
+								.map(Object::toString).toList());
+			}
+		}
+
+		return retval;
+	}
+
 	public String getGeneratorName() {
 		return generatorName;
 	}
 
 	@Override public boolean equals(Object o) {
-		return o instanceof GeneratorConfiguration && ((GeneratorConfiguration) o).generatorName
-				.equals(this.generatorName);
+		return o instanceof GeneratorConfiguration && ((GeneratorConfiguration) o).generatorName.equals(
+				this.generatorName);
 	}
 
 	@Override public int hashCode() {
@@ -187,31 +223,25 @@ public class GeneratorConfiguration implements Comparable<GeneratorConfiguration
 		return generatorStats;
 	}
 
-	public TemplateGeneratorConfiguration getTemplateGeneratorConfiguration() {
-		return templateGeneratorConfiguration;
+	public TemplateGeneratorConfiguration getTemplateGenConfigFromName(String name) {
+		if (templateGeneratorConfigs.containsKey(name))
+			return templateGeneratorConfigs.get(name);
+		else {
+			TemplateGeneratorConfiguration tpl = new TemplateGeneratorConfiguration(generatorName, name);
+			templateGeneratorConfigs.put(name, tpl);
+			return tpl;
+		}
 	}
 
-	public TemplateGeneratorConfiguration getProcedureGeneratorConfiguration() {
-		return procedureGeneratorConfiguration;
+	public GeneratorVariableTypes getVariableTypes() {
+		return generatorVariableTypes;
 	}
 
-	public TemplateGeneratorConfiguration getTriggerGeneratorConfiguration() {
-		return triggerGeneratorConfiguration;
-	}
-
-	public TemplateGeneratorConfiguration getAITaskGeneratorConfiguration() {
-		return aitaskGeneratorConfiguration;
-	}
-
-	public TemplateGeneratorConfiguration getJSONTriggerGeneratorConfiguration() {
-		return jsonTriggerGeneratorConfiguration;
-	}
-
-	@Nullable public List<String> getSupportedDefinitionFields(ModElementType type) {
+	@Nullable public List<String> getSupportedDefinitionFields(ModElementType<?> type) {
 		Map<?, ?> map = definitionsProvider.getModElementDefinition(type);
 
 		if (map == null) {
-			LOG.info("Failed to load element definition for mod element type " + type.name());
+			LOG.info("Failed to load element definition for mod element type " + type.getRegistryName());
 			return null;
 		}
 
@@ -222,7 +252,22 @@ public class GeneratorConfiguration implements Comparable<GeneratorConfiguration
 		return null;
 	}
 
-	@Override public int compareTo(@NotNull GeneratorConfiguration o) {
+	@Nullable public List<String> getUnsupportedDefinitionFields(ModElementType<?> type) {
+		Map<?, ?> map = definitionsProvider.getModElementDefinition(type);
+
+		if (map == null) {
+			LOG.info("Failed to load element definition for mod element type " + type.getRegistryName());
+			return null;
+		}
+
+		List<?> exclusions = (List<?>) map.get("field_exclusions");
+		if (exclusions != null)
+			return exclusions.stream().map(Object::toString).map(String::trim).collect(Collectors.toList());
+
+		return null;
+	}
+
+	@Override public int compareTo(@Nonnull GeneratorConfiguration o) {
 		if (o.getGeneratorStats().getStatus() == generatorStats.getStatus()) { // same status, sort by version
 			return o.getGeneratorMinecraftVersion().compareTo(getGeneratorMinecraftVersion());
 		} else { // different status, sort by status

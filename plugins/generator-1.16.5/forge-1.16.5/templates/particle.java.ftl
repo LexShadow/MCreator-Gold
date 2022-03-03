@@ -32,22 +32,15 @@
 
 package ${package}.particle;
 
-@${JavaModName}Elements.ModElement.Tag
-public class ${name}Particle extends ${JavaModName}Elements.ModElement{
+@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD) public class ${name}Particle {
 
 	public static final BasicParticleType particle = new BasicParticleType(${data.alwaysShow});
 
-	public ${name}Particle (${JavaModName}Elements instance) {
-		super(instance, ${data.getModElement().getSortID()});
-
-		FMLJavaModLoadingContext.get().getModEventBus().register(this);
-	}
-
-	@SubscribeEvent public void registerParticleType(RegistryEvent.Register<ParticleType<?>> event) {
+	@SubscribeEvent public static void registerParticleType(RegistryEvent.Register<ParticleType<?>> event) {
 		event.getRegistry().register(particle.setRegistryName("${registryname}"));
 	}
 
-	@OnlyIn(Dist.CLIENT) @SubscribeEvent public void registerParticle(ParticleFactoryRegisterEvent event) {
+	@OnlyIn(Dist.CLIENT) @SubscribeEvent public static void registerParticle(ParticleFactoryRegisterEvent event) {
 		Minecraft.getInstance().particles.registerFactory(particle, CustomParticleFactory::new);
 	}
 
@@ -117,7 +110,7 @@ public class ${name}Particle extends ${JavaModName}Elements.ModElement{
 			}
 			</#if>
 
-			<#if hasCondition(data.additionalExpiryCondition)>
+			<#if hasProcedure(data.additionalExpiryCondition)>
 			double x = this.posX;
 			double y = this.posY;
 			double z = this.posZ;

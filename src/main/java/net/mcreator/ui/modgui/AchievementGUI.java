@@ -51,8 +51,8 @@ import net.mcreator.ui.validation.validators.TextFieldValidator;
 import net.mcreator.util.ListUtils;
 import net.mcreator.util.StringUtils;
 import net.mcreator.workspace.elements.ModElement;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
@@ -89,7 +89,7 @@ public class AchievementGUI extends ModElementGUI<Achievement> {
 	private ModElementListField rewardLoot;
 	private ModElementListField rewardRecipes;
 
-	private final JSpinner rewardXP = new JSpinner(new SpinnerNumberModel(1, 0, 64000, 1));
+	private final JSpinner rewardXP = new JSpinner(new SpinnerNumberModel(0, 0, 64000, 1));
 
 	private BlocklyPanel blocklyPanel;
 	private final CompileNotesPanel compileNotesPanel = new CompileNotesPanel();
@@ -126,28 +126,28 @@ public class AchievementGUI extends ModElementGUI<Achievement> {
 		showPopup.setSelected(true);
 		announceToChat.setSelected(true);
 
-		selp.add(HelpUtils
-				.wrapWithHelpButton(this.withEntry("advancement/name"), L10N.label("elementgui.advancement.name")));
+		selp.add(HelpUtils.wrapWithHelpButton(this.withEntry("advancement/name"),
+				L10N.label("elementgui.advancement.name")));
 		selp.add(achievementName);
 
 		selp.add(HelpUtils.wrapWithHelpButton(this.withEntry("advancement/description"),
 				L10N.label("elementgui.advancement.description")));
 		selp.add(achievementDescription);
 
-		selp.add(HelpUtils
-				.wrapWithHelpButton(this.withEntry("advancement/icon"), L10N.label("elementgui.advancement.icon")));
+		selp.add(HelpUtils.wrapWithHelpButton(this.withEntry("advancement/icon"),
+				L10N.label("elementgui.advancement.icon")));
 		selp.add(PanelUtils.join(FlowLayout.LEFT, achievementIcon));
 
 		selp.add(HelpUtils.wrapWithHelpButton(this.withEntry("advancement/background"),
 				L10N.label("elementgui.advancement.background")));
 		selp.add(background);
 
-		selp.add(HelpUtils
-				.wrapWithHelpButton(this.withEntry("advancement/type"), L10N.label("elementgui.advancement.type")));
+		selp.add(HelpUtils.wrapWithHelpButton(this.withEntry("advancement/type"),
+				L10N.label("elementgui.advancement.type")));
 		selp.add(achievementType);
 
-		selp.add(HelpUtils
-				.wrapWithHelpButton(this.withEntry("advancement/parent"), L10N.label("elementgui.advancement.parent")));
+		selp.add(HelpUtils.wrapWithHelpButton(this.withEntry("advancement/parent"),
+				L10N.label("elementgui.advancement.parent")));
 		selp.add(parentAchievement);
 
 		selp.add(HelpUtils.wrapWithHelpButton(this.withEntry("advancement/show_toast"),
@@ -196,8 +196,8 @@ public class AchievementGUI extends ModElementGUI<Achievement> {
 		selp.setOpaque(false);
 		selp2.setOpaque(false);
 
-		achievementName
-				.setValidator(new TextFieldValidator(achievementName, L10N.t("elementgui.advancement.cant_be_empty")));
+		achievementName.setValidator(
+				new TextFieldValidator(achievementName, L10N.t("elementgui.advancement.cant_be_empty")));
 		achievementDescription.setValidator(
 				new TextFieldValidator(achievementDescription, L10N.t("elementgui.advancement.must_have_description")));
 		achievementIcon.setValidator(new MCItemHolderValidator(achievementIcon));
@@ -216,8 +216,8 @@ public class AchievementGUI extends ModElementGUI<Achievement> {
 			blocklyPanel.getJSBridge()
 					.setJavaScriptEventListener(() -> new Thread(AchievementGUI.this::regenerateTrigger).start());
 			if (!isEditingMode()) {
-				blocklyPanel
-						.setXML("<xml><block type=\"advancement_trigger\" deletable=\"false\" x=\"40\" y=\"80\"/></xml>");
+				blocklyPanel.setXML(
+						"<xml><block type=\"advancement_trigger\" deletable=\"false\" x=\"40\" y=\"80\"/></xml>");
 			}
 		});
 
@@ -229,8 +229,9 @@ public class AchievementGUI extends ModElementGUI<Achievement> {
 
 		advancementTrigger.setPreferredSize(new Dimension(0, 330));
 
-		pane3.add("Center", PanelUtils.totalCenterInPanel(PanelUtils.centerInPanel(PanelUtils
-				.westAndEastElement(selpouter, PanelUtils.northAndCenterElement(selp2, advancementTrigger)))));
+		pane3.add("Center", PanelUtils.totalCenterInPanel(PanelUtils.centerInPanel(
+				PanelUtils.westAndEastElement(selpouter,
+						PanelUtils.northAndCenterElement(selp2, advancementTrigger)))));
 
 		pane3.setOpaque(false);
 
@@ -264,7 +265,7 @@ public class AchievementGUI extends ModElementGUI<Achievement> {
 		SwingUtilities.invokeLater(() -> {
 			hasErrors = false;
 			for (BlocklyCompileNote note : compileNotesArrayList) {
-				if (note.getType() == BlocklyCompileNote.Type.ERROR) {
+				if (note.type() == BlocklyCompileNote.Type.ERROR) {
 					hasErrors = true;
 					break;
 				}
@@ -276,8 +277,8 @@ public class AchievementGUI extends ModElementGUI<Achievement> {
 	}
 
 	@Override public void reloadDataLists() {
-		ComboBoxUtil
-				.updateComboBoxContents(parentAchievement, ElementUtil.loadAllAchievements(mcreator.getWorkspace()));
+		ComboBoxUtil.updateComboBoxContents(parentAchievement,
+				ElementUtil.loadAllAchievements(mcreator.getWorkspace()));
 
 		ComboBoxUtil.updateComboBoxContents(rewardFunction, ListUtils.merge(Collections.singleton("No function"),
 				mcreator.getWorkspace().getModElements().stream().filter(e -> e.getType() == ModElementType.FUNCTION)
@@ -291,7 +292,7 @@ public class AchievementGUI extends ModElementGUI<Achievement> {
 	@Override protected AggregatedValidationResult validatePage(int page) {
 		if (hasErrors)
 			return new AggregatedValidationResult.MULTIFAIL(compileNotesPanel.getCompileNotes().stream()
-					.map(compileNote -> L10N.t("elementgui.advancement.trigger") + compileNote.getMessage())
+					.map(compileNote -> L10N.t("elementgui.advancement.trigger", compileNote.message()))
 					.collect(Collectors.toList()));
 
 		return new AggregatedValidationResult(page1group);
@@ -344,7 +345,7 @@ public class AchievementGUI extends ModElementGUI<Achievement> {
 		return achievement;
 	}
 
-	@Override public @Nullable URI getContextURL() throws URISyntaxException {
+	@Override public @Nullable URI contextURL() throws URISyntaxException {
 		return new URI(MCreatorApplication.SERVER_DOMAIN + "/wiki/how-make-achievement");
 	}
 

@@ -18,15 +18,17 @@
 
 package net.mcreator.ui.validation.validators;
 
+import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.validation.Validator;
 import net.mcreator.ui.validation.component.VTextField;
 
+import javax.swing.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class CommaSeparatedNumbersValidator implements Validator {
 
-	private final VTextField holder;
+	private final JTextField holder;
 
 	public CommaSeparatedNumbersValidator(VTextField holder) {
 		this.holder = holder;
@@ -38,7 +40,8 @@ public class CommaSeparatedNumbersValidator implements Validator {
 		try {
 			Stream.of(holder.getText().split(",")).map(Integer::parseInt).collect(Collectors.toList());
 		} catch (Exception e) {
-			return new Validator.ValidationResult(Validator.ValidationResultType.ERROR, "Only number list allowed");
+			return new Validator.ValidationResult(Validator.ValidationResultType.ERROR,
+					L10N.t("validators.only_number_list"));
 		}
 		return Validator.ValidationResult.PASSED;
 	}

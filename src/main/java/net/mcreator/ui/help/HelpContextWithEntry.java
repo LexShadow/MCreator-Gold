@@ -18,32 +18,8 @@
 
 package net.mcreator.ui.help;
 
-import org.jetbrains.annotations.Nullable;
-
+import javax.annotation.Nullable;
 import java.net.URI;
 
-public class HelpContextWithEntry implements IHelpContext {
-
-	@Nullable private final String name;
-	@Nullable private final URI contextURL;
-
-	@Nullable private final String entry;
-
-	public HelpContextWithEntry(@Nullable String name, @Nullable URI contextURL, @Nullable String entry) {
-		this.name = name;
-		this.contextURL = contextURL;
-		this.entry = entry;
-	}
-
-	@Nullable @Override public String getContextName() {
-		return name;
-	}
-
-	@Nullable @Override public URI getContextURL() {
-		return contextURL;
-	}
-
-	@Nullable @Override public String getEntry() {
-		return entry;
-	}
-}
+public record HelpContextWithEntry(@Nullable String contextName, @Nullable URI contextURL, @Nullable String entry)
+		implements IHelpContext {}

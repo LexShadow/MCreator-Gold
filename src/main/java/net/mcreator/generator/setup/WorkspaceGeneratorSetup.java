@@ -31,8 +31,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.Nullable;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -51,8 +51,8 @@ public class WorkspaceGeneratorSetup {
 		workspace.getGenerator().close(); // close gradle connection
 
 		// delete generator base files
-		Set<String> fileNames = PluginLoader.INSTANCE
-				.getResourcesInPackage(workspace.getGenerator().getGeneratorName() + ".workspacebase");
+		Set<String> fileNames = PluginLoader.INSTANCE.getResourcesInPackage(
+				workspace.getGenerator().getGeneratorName() + ".workspacebase");
 		for (String file : fileNames) {
 			File generatorFile = new File(workspace.getWorkspaceFolder(),
 					file.replace(workspace.getGenerator().getGeneratorName() + "/workspacebase", ""));
@@ -118,8 +118,8 @@ public class WorkspaceGeneratorSetup {
 		DefaultFreemarkerConfiguration configuration = new DefaultFreemarkerConfiguration();
 		Map<String, Object> dataModel = new BaseDataModelProvider(workspace.getGenerator()).provide();
 
-		Set<String> fileNames = PluginLoader.INSTANCE
-				.getResourcesInPackage(workspace.getGenerator().getGeneratorName() + ".workspacebase");
+		Set<String> fileNames = PluginLoader.INSTANCE.getResourcesInPackage(
+				workspace.getGenerator().getGeneratorName() + ".workspacebase");
 		for (String file : fileNames) {
 			try {
 				InputStream stream = PluginLoader.INSTANCE.getResourceAsStream(file);
@@ -149,7 +149,7 @@ public class WorkspaceGeneratorSetup {
 			Properties properties = new Properties();
 			try {
 				properties.load(new FileInputStream(setupFile));
-				if (generator.getGeneratorBuildFileVersion().equals(properties.getProperty("buildFileVersion")))
+				if (generator.getFullGeneratorVersion().equals(properties.getProperty("buildFileVersion")))
 					return false;
 			} catch (IOException e) {
 				LOG.error(e.getMessage(), e);
@@ -159,7 +159,7 @@ public class WorkspaceGeneratorSetup {
 	}
 
 	public static void completeSetup(Generator generator) {
-		FileIO.writeStringToFile("buildFileVersion=" + generator.getGeneratorBuildFileVersion(),
+		FileIO.writeStringToFile("buildFileVersion=" + generator.getFullGeneratorVersion(),
 				new File(generator.getFolderManager().getWorkspaceCacheDir(), "setupInfo"));
 	}
 

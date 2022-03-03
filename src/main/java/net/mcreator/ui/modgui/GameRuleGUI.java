@@ -31,8 +31,9 @@ import net.mcreator.ui.validation.component.VTextField;
 import net.mcreator.ui.validation.validators.TextFieldValidator;
 import net.mcreator.util.StringUtils;
 import net.mcreator.workspace.elements.ModElement;
-import org.jetbrains.annotations.Nullable;
+import net.mcreator.workspace.elements.VariableTypeLoader;
 
+import javax.annotation.Nullable;
 import javax.swing.*;
 import java.awt.*;
 import java.net.URI;
@@ -55,7 +56,7 @@ public class GameRuleGUI extends ModElementGUI<GameRule> {
 	private final ValidationGroup page1group = new ValidationGroup();
 
 	private final CardLayout cl = new CardLayout();
-	private final JPanel defalutValue = new JPanel(cl);
+	private final JPanel defaultValue = new JPanel(cl);
 
 	public GameRuleGUI(MCreator mcreator, ModElement modElement, boolean editingMode) {
 		super(mcreator, modElement, editingMode);
@@ -89,20 +90,20 @@ public class GameRuleGUI extends ModElementGUI<GameRule> {
 				L10N.label("elementgui.gamerule.description")));
 		subpane2.add(description);
 
-		subpane2.add(HelpUtils
-				.wrapWithHelpButton(this.withEntry("gamerule/category"), L10N.label("elementgui.gamerule.category")));
+		subpane2.add(HelpUtils.wrapWithHelpButton(this.withEntry("gamerule/category"),
+				L10N.label("elementgui.gamerule.category")));
 		subpane2.add(gameruleCategory);
 
 		subpane2.add(
 				HelpUtils.wrapWithHelpButton(this.withEntry("gamerule/type"), L10N.label("elementgui.gamerule.type")));
 		subpane2.add(gameruleType);
 
-		defalutValue.add(defaultValueLogic, "Logic");
-		defalutValue.add(defaultValueNumber, "Number");
+		defaultValue.add(defaultValueLogic, "Logic");
+		defaultValue.add(defaultValueNumber, "Number");
 
 		subpane2.add(HelpUtils.wrapWithHelpButton(this.withEntry("gamerule/default_value"),
 				L10N.label("elementgui.gamerule.default_value")));
-		subpane2.add(defalutValue);
+		subpane2.add(defaultValue);
 
 		page1group.addValidationElement(name);
 		page1group.addValidationElement(displayName);
@@ -127,14 +128,14 @@ public class GameRuleGUI extends ModElementGUI<GameRule> {
 		addPage(L10N.t("elementgui.common.page_properties"), pane3);
 
 		if (!isEditingMode()) {
-			name.setText(StringUtils.lowercaseFirstLetter(getModElement().getName()));
+			name.setText(StringUtils.lowercaseFirstLetter(modElement.getName()));
 
 			updateDefaultValueUI();
 		}
 	}
 
 	private void updateDefaultValueUI() {
-		cl.show(defalutValue, (String) gameruleType.getSelectedItem());
+		cl.show(defaultValue, (String) gameruleType.getSelectedItem());
 	}
 
 	@Override protected AggregatedValidationResult validatePage(int page) {
@@ -151,7 +152,7 @@ public class GameRuleGUI extends ModElementGUI<GameRule> {
 		defaultValueLogic.setSelectedItem(Boolean.toString(gamerule.defaultValueLogic));
 		defaultValueNumber.setValue(gamerule.defaultValueNumber);
 
-		name.setText(StringUtils.lowercaseFirstLetter(getModElement().getName()));
+		name.setText(StringUtils.lowercaseFirstLetter(modElement.getName()));
 
 		updateDefaultValueUI();
 	}
@@ -169,17 +170,20 @@ public class GameRuleGUI extends ModElementGUI<GameRule> {
 
 	@Override protected void beforeGeneratableElementGenerated() {
 		super.beforeGeneratableElementGenerated();
-		modElement.setRegistryName(StringUtils.lowercaseFirstLetter(getModElement().getName()));
+		modElement.setRegistryName(StringUtils.lowercaseFirstLetter(modElement.getName()));
 	}
 
 	@Override protected void afterGeneratableElementStored() {
 		super.afterGeneratableElementStored();
 		modElement.clearMetadata();
-		modElement.putMetadata("type", "Number".equals(gameruleType.getSelectedItem()) ? "number" : "boolean");
+		modElement.putMetadata("type", "Number".equals(gameruleType.getSelectedItem()) ?
+				VariableTypeLoader.BuiltInTypes.NUMBER.getName() :
+				VariableTypeLoader.BuiltInTypes.LOGIC.getName());
 		modElement.reinit();
 	}
 
-	@Override public @Nullable URI getContextURL() throws URISyntaxException {
+	@Override public @Nullable URI contextURL() throws URISyntaxException {
 		return new URI(MCreatorApplication.SERVER_DOMAIN + "/wiki/how-make-game-rule");
 	}
+
 }

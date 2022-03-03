@@ -21,11 +21,17 @@ package net.mcreator.workspace.misc;
 import net.mcreator.element.BaseType;
 import net.mcreator.element.GeneratableElement;
 import net.mcreator.element.ModElementType;
+import net.mcreator.element.ModElementTypeLoader;
+import net.mcreator.element.parts.MItemBlock;
+import net.mcreator.element.types.*;
+import net.mcreator.element.types.interfaces.ICommonType;
 import net.mcreator.element.types.interfaces.IItemWithTexture;
+import net.mcreator.generator.GeneratorWrapper;
 import net.mcreator.generator.mapping.MappableElement;
 import net.mcreator.workspace.Workspace;
 import net.mcreator.workspace.elements.ModElement;
-import net.mcreator.workspace.elements.VariableElementType;
+import net.mcreator.workspace.elements.VariableType;
+import net.mcreator.workspace.resources.Model;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -39,24 +45,27 @@ import java.util.stream.Collectors;
 
 	private final Workspace workspace;
 
+	private final GeneratorWrapper internalWrapper;
+
 	public WorkspaceInfo(Workspace workspace) {
 		this.workspace = workspace;
+		this.internalWrapper = new GeneratorWrapper(workspace.getGenerator());
 	}
 
 	public boolean hasVariables() {
 		return workspace.getVariableElements().size() > 0;
 	}
 
-	public boolean hasVariablesOfScope(String type) {
-		return workspace.getVariableElements().stream()
-				.anyMatch(e -> e.getScope() == VariableElementType.Scope.valueOf(type));
+	public boolean hasJavaModels() {
+		return Model.getModels(workspace).stream().anyMatch(model -> model.getType() == Model.Type.JAVA);
 	}
 
-	public boolean hasFluids() {
-		for (ModElement element : workspace.getModElements())
-			if (element.getType() == ModElementType.FLUID)
-				return true;
-		return false;
+	public boolean hasSounds() {
+		return workspace.getSoundElements().size() > 0;
+	}
+
+	public boolean hasVariablesOfScope(String type) {
+		return workspace.getVariableElements().stream().anyMatch(e -> e.getScope() == VariableType.Scope.valueOf(type));
 	}
 
 	public Map<String, String> getItemTextureMap() {
@@ -72,12 +81,6 @@ import java.util.stream.Collectors;
 		return textureMap;
 	}
 
-	public List<ModElement> getElementsOfType(String typestring) {
-		ModElementType type = ModElementType.valueOf(typestring);
-		return workspace.getModElements().parallelStream().filter(e -> e.getType() == type)
-				.collect(Collectors.toList());
-	}
-
 	public String getUUID(String offset) {
 		return UUID.nameUUIDFromBytes(
 				(offset + workspace.getWorkspaceSettings().getModID()).getBytes(StandardCharsets.UTF_8)).toString();
@@ -88,24 +91,135 @@ import java.util.stream.Collectors;
 				.toString();
 	}
 
-	public <T extends MappableElement> List<T> filterBrokenReferences(List<T> input) {
+	public <T extends MappableElement> Set<MappableElement.Unique> filterBrokenReferences(List<T> input) {
 		if (input == null)
-			return Collections.emptyList();
+			return Collections.emptySet();
 
-		List<T> retval = new ArrayList<>();
+		Set<MappableElement.Unique> retval = new HashSet<>();
 		for (T t : input) {
 			if (t.getUnmappedValue().startsWith("CUSTOM:")) {
-				if (workspace.getModElementByName(t.getUnmappedValue().replaceFirst("CUSTOM:", "")) != null) {
-					retval.add(t);
+				if (workspace.getModElementByName(internalWrapper.getElementPlainName(t.getUnmappedValue())) != null) {
+					retval.add(new MappableElement.Unique(t));
 				} else {
 					LOG.warn("Broken reference found. Referencing non-existent element: " + t.getUnmappedValue()
 							.replaceFirst("CUSTOM:", ""));
 				}
 			} else {
-				retval.add(t);
+				retval.add(new MappableElement.Unique(t));
 			}
 		}
 		return retval;
+	}
+
+	public List<ModElement> getElementsOfType(String typestring) {
+		return getElementsOfType(ModElementTypeLoader.getModElementType(typestring));
+	}
+
+	public List<ModElement> getElementsOfType(ModElementType<?> type) {
+		try {
+			return workspace.getModElements().parallelStream().filter(e -> e.getType() == type)
+					.collect(Collectors.toList());
+		} catch (IllegalArgumentException e) {
+			LOG.warn("Failed to list elements of non-existent type", e);
+			return Collections.emptyList();
+		}
+	}
+
+	public List<ModElement> getRecipesOfType(String typestring) {
+		try {
+			return workspace.getModElements().parallelStream().filter(e -> e.getType() == ModElementType.RECIPE)
+					.filter(e -> {
+						GeneratableElement ge = e.getGeneratableElement();
+						if (ge instanceof Recipe)
+							return ((Recipe) ge).recipeType.equals(typestring);
+						return false;
+					}).collect(Collectors.toList());
+		} catch (IllegalArgumentException e) {
+			LOG.warn("Failed to list elements of non-existent type", e);
+			return Collections.emptyList();
+		}
+	}
+
+	public boolean hasElementsOfBaseType(BaseType baseType) {
+		for (ModElement modElement : workspace.getModElements()) {
+			GeneratableElement generatableElement = modElement.getGeneratableElement();
+			if (generatableElement instanceof ICommonType) {
+				Collection<BaseType> baseTypes = ((ICommonType) generatableElement).getBaseTypesProvided();
+				if (baseTypes.contains(baseType))
+					return true;
+			}
+		}
+		return false;
+	}
+
+	public boolean hasElementsOfBaseType(String baseType) {
+		return hasElementsOfBaseType(BaseType.valueOf(baseType.toUpperCase(Locale.ENGLISH)));
+	}
+
+	public boolean hasElementsOfType(ModElementType<?> type) {
+		try {
+			return workspace.getModElements().parallelStream().anyMatch(e -> e.getType() == type);
+		} catch (IllegalArgumentException e) {
+			return false;
+		}
+	}
+
+	public boolean hasElementsOfType(String typestring) {
+		return hasElementsOfType(ModElementTypeLoader.getModElementType(typestring));
+	}
+
+	public boolean hasGameRulesOfType(String type) {
+		for (ModElement element : workspace.getModElements())
+			if (element.getType() == ModElementType.GAMERULE) {
+				if (element.getGeneratableElement() instanceof GameRule gr)
+					if (gr.type.equalsIgnoreCase(type))
+						return true;
+			}
+		return false;
+	}
+
+	public boolean hasBlocksMineableWith(String tool) {
+		for (ModElement element : workspace.getModElements())
+			if (element.getType() == ModElementType.BLOCK) {
+				if (element.getGeneratableElement() instanceof Block block)
+					if (block.destroyTool.equalsIgnoreCase(tool))
+						return true;
+			}
+		return false;
+	}
+
+	public boolean hasToolsOfType(String type) {
+		for (ModElement element : workspace.getModElements())
+			if (element.getType() == ModElementType.TOOL) {
+				if (element.getGeneratableElement() instanceof Tool tool)
+					if (tool.toolType.equalsIgnoreCase(type))
+						return true;
+			}
+		return false;
+	}
+
+	public boolean hasFluidsOfType(String type) {
+		for (ModElement element : workspace.getModElements())
+			if (element.getType() == ModElementType.FLUID) {
+				if (element.getGeneratableElement() instanceof Fluid fluid)
+					if (fluid.type.equalsIgnoreCase(type))
+						return true;
+			}
+		return false;
+	}
+
+	public boolean hasBiomesWithStructure(String type) {
+		for (ModElement element : workspace.getModElements())
+			if (element.getType() == ModElementType.BIOME) {
+				if (element.getGeneratableElement() instanceof Biome biome)
+					if (biome.hasStructure(type))
+						return true;
+			}
+		return false;
+	}
+
+	public MItemBlock itemBlock(String itemBlock) {
+		return new MItemBlock(workspace, itemBlock);
 	}
 
 	public Workspace getWorkspace() {

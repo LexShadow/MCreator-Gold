@@ -23,6 +23,7 @@ import net.mcreator.blockly.BlocklyToCode;
 import net.mcreator.blockly.IBlockGenerator;
 import net.mcreator.element.parts.Procedure;
 import net.mcreator.generator.template.TemplateGeneratorException;
+import net.mcreator.ui.init.L10N;
 import net.mcreator.util.XMLUtil;
 import org.w3c.dom.Element;
 
@@ -41,7 +42,7 @@ public class ProcedureCallBlock implements IBlockGenerator {
 
 			if (!procedure.exists) {
 				master.addCompileNote(new BlocklyCompileNote(BlocklyCompileNote.Type.WARNING,
-						"Procedure call block is calling nonexistent procedure " + procedure));
+						L10N.t("blockly.warnings.call_procedure.nonexistent", procedure)));
 				return;
 			}
 
@@ -65,15 +66,25 @@ public class ProcedureCallBlock implements IBlockGenerator {
 					call_at = true;
 				else
 					master.addCompileNote(new BlocklyCompileNote(BlocklyCompileNote.Type.WARNING,
-							"Call procedure at is missing some of the coordinate inputs. It will be processed as normal call procedure block."));
+							L10N.t("blockly.warnings.call_procedure.missing_inputs")));
+
+			String xcode = "";
+			String ycode = "";
+			String zcode = "";
+
+			if (call_at) {
+				xcode = BlocklyToCode.directProcessOutputBlock(master, x);
+				ycode = BlocklyToCode.directProcessOutputBlock(master, y);
+				zcode = BlocklyToCode.directProcessOutputBlock(master, z);
+			}
 
 			if (master.getTemplateGenerator() != null) {
 				Map<String, Object> dataModel = new HashMap<>();
 				dataModel.put("procedure", procedure.getName());
 				if (call_at) {
-					dataModel.put("x", BlocklyToCode.directProcessOutputBlock(master, x));
-					dataModel.put("y", BlocklyToCode.directProcessOutputBlock(master, y));
-					dataModel.put("z", BlocklyToCode.directProcessOutputBlock(master, z));
+					dataModel.put("x", xcode);
+					dataModel.put("y", ycode);
+					dataModel.put("z", zcode);
 					dataModel.put("dependencies", procedure.getDependencies(master.getWorkspace()));
 					String code = master.getTemplateGenerator()
 							.generateFromTemplate("_call_procedure_at.java.ftl", dataModel);
@@ -87,8 +98,8 @@ public class ProcedureCallBlock implements IBlockGenerator {
 			}
 
 		} else {
-			master.addCompileNote(
-					new BlocklyCompileNote(BlocklyCompileNote.Type.WARNING, "Empty procedure call block was skipped."));
+			master.addCompileNote(new BlocklyCompileNote(BlocklyCompileNote.Type.WARNING,
+					L10N.t("blockly.warnings.call_procedure.empty")));
 		}
 	}
 

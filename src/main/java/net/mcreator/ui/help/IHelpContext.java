@@ -18,38 +18,37 @@
 
 package net.mcreator.ui.help;
 
-import org.jetbrains.annotations.Nullable;
-
+import javax.annotation.Nullable;
 import java.net.URI;
 import java.net.URISyntaxException;
 
 public interface IHelpContext {
 
 	IHelpContext NONE = new IHelpContext() {
-		@Override public @Nullable String getContextName() {
+		@Override public @Nullable String contextName() {
 			return null;
 		}
 
-		@Override public @Nullable URI getContextURL() {
+		@Override public @Nullable URI contextURL() {
 			return null;
 		}
 	};
 
 	default IHelpContext withEntry(String entry) {
 		try {
-			return new HelpContextWithEntry(this.getContextName(), this.getContextURL(), entry);
+			return new HelpContextWithEntry(this.contextName(), this.contextURL(), entry);
 		} catch (URISyntaxException e) {
-			return new HelpContextWithEntry(this.getContextName(), null, entry);
+			return new HelpContextWithEntry(this.contextName(), null, entry);
 		}
 	}
 
-	default String getEntry() {
+	default String entry() {
 		return null;
 	}
 
-	@Nullable String getContextName();
+	@Nullable String contextName();
 
-	@Nullable default URI getContextURL() throws URISyntaxException {
+	@Nullable default URI contextURL() throws URISyntaxException {
 		return null;
 	}
 

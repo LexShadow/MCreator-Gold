@@ -107,6 +107,10 @@ public class ActionRegistry {
 	public final BasicAction injectDefaultTags;
 
 	// IDE actions
+	public final BasicAction openFile;
+	public final BasicAction openFileInDesktop;
+	public final BasicAction showFileInExplorer;
+	public final BasicAction deleteFile;
 	public final BasicAction newClass;
 	public final BasicAction newJson;
 	public final BasicAction newImage;
@@ -171,8 +175,8 @@ public class ActionRegistry {
 	public final BasicAction imageEditorRedo;
 	public final BasicAction imageEditorSave;
 	public final BasicAction imageEditorSaveAs;
-	public final BasicAction imageEditorResizeCanvas;
 	public final BasicAction imageEditorPencil;
+	public final BasicAction imageEditorLine;
 	public final BasicAction imageEditorShape;
 	public final BasicAction imageEditorEraser;
 	public final BasicAction imageEditorStamp;
@@ -183,6 +187,7 @@ public class ActionRegistry {
 	public final BasicAction imageEditorHSVNoise;
 	public final BasicAction imageEditorMoveLayer;
 	public final BasicAction imageEditorResizeLayer;
+	public final BasicAction imageEditorResizeCanvas;
 
 	public ActionRegistry(MCreator mcreator) {
 		this.mcreator = mcreator;
@@ -212,6 +217,14 @@ public class ActionRegistry {
 		this.help = new VisitURIAction(this, L10N.t("action.wiki"), MCreatorApplication.SERVER_DOMAIN + "/wiki");
 		this.support = new VisitURIAction(this, L10N.t("action.support"),
 				MCreatorApplication.SERVER_DOMAIN + "/support");
+		this.openFile = new BasicAction(this, L10N.t("workspace_file_browser.open"),
+				e -> mcreator.getProjectBrowser().openSelectedFile(true)).setIcon(UIRES.get("16px.edit.gif"));
+		this.openFileInDesktop = new BasicAction(this, L10N.t("workspace_file_browser.open_desktop"),
+				e -> mcreator.getProjectBrowser().openSelectedFileInDesktop());
+		this.showFileInExplorer = new BasicAction(this, L10N.t("workspace_file_browser.show_in_explorer"),
+				e -> mcreator.getProjectBrowser().showSelectedFileInDesktop()).setIcon(UIRES.get("16px.open.gif"));
+		this.deleteFile = new BasicAction(this, L10N.t("workspace_file_browser.remove_file"),
+				e -> mcreator.getProjectBrowser().deleteSelectedFile()).setIcon(UIRES.get("16px.delete.gif"));
 		this.newClass = new NewClassAction(this);
 		this.newJson = new NewJsonFileAction(this);
 		this.newImage = new NewImageFileAction(this);
@@ -236,23 +249,21 @@ public class ActionRegistry {
 		this.createAnimatedTexture = new TextureAction(this, L10N.t("action.create_animated_texture"),
 				actionEvent -> new AnimationMakerView(mcreator).showView()).setIcon(UIRES.get("16px.newanimation"));
 		this.importBlockTexture = new TextureAction(this, L10N.t("action.import_block_texture"),
-				actionEvent -> TextureImportDialogs
-						.importTexturesBlockOrItem(mcreator, BlockItemTextureSelector.TextureType.BLOCK))
-				.setIcon(UIRES.get("16px.importblock"));
+				actionEvent -> TextureImportDialogs.importTexturesBlockOrItem(mcreator,
+						BlockItemTextureSelector.TextureType.BLOCK)).setIcon(UIRES.get("16px.importblock"));
 		this.importItemTexture = new TextureAction(this, L10N.t("action.import_item_texture"),
-				actionEvent -> TextureImportDialogs
-						.importTexturesBlockOrItem(mcreator, BlockItemTextureSelector.TextureType.ITEM))
-				.setIcon(UIRES.get("16px.importitem"));
+				actionEvent -> TextureImportDialogs.importTexturesBlockOrItem(mcreator,
+						BlockItemTextureSelector.TextureType.ITEM)).setIcon(UIRES.get("16px.importitem"));
 		this.importArmorTexture = new TextureAction(this, L10N.t("action.import_armor_texture"), actionEvent -> {
 			TextureImportDialogs.importArmor(mcreator);
 			mcreator.mv.resourcesPan.workspacePanelTextures.reloadElements();
 		});
 		this.importOtherTexture = new TextureAction(this, L10N.t("action.import_other_texture"),
-				actionEvent -> TextureImportDialogs.importOtherTextures(mcreator))
-				.setIcon(UIRES.get("16px.importtexture"));
+				actionEvent -> TextureImportDialogs.importOtherTextures(mcreator)).setIcon(
+				UIRES.get("16px.importtexture"));
 		this.importSound = new ImportSoundAction(this);
-		this.importStructure = new StructureImportActions.ImportStructure(this)
-				.setIcon(UIRES.get("16px.importstructure"));
+		this.importStructure = new StructureImportActions.ImportStructure(this).setIcon(
+				UIRES.get("16px.importstructure"));
 		this.importStructureFromMinecraft = new StructureImportActions.ImportStructureFromMinecraft(this);
 		this.importJavaModel = new ModelImportActions.JAVA(this).setIcon(UIRES.get("16px.importjavamodel"));
 		this.importJSONModel = new ModelImportActions.JSON(this).setIcon(UIRES.get("16px.importjsonmodel"));
@@ -303,8 +314,8 @@ public class ActionRegistry {
 				MCreatorApplication.SERVER_DOMAIN + "/support/knowledgebase");
 		this.setCreativeTabItemOrder = new EditTabOrderAction(this);
 		this.injectDefaultTags = InjectTagsTool.getAction(this);
-		this.donate = new VisitURIAction(this, L10N.t("action.donate"), MCreatorApplication.SERVER_DOMAIN + "/donate")
-				.setIcon(UIRES.get("donate"));
+		this.donate = new VisitURIAction(this, L10N.t("action.donate"),
+				MCreatorApplication.SERVER_DOMAIN + "/donate").setIcon(UIRES.get("donate"));
 		this.openJavaEditionFolder = new MinecraftFolderActions.OpenJavaEditionFolder(this);
 		this.openBedrockEditionFolder = new MinecraftFolderActions.OpenBedrockEditionFolder(this);
 
@@ -313,8 +324,8 @@ public class ActionRegistry {
 		this.imageEditorRedo = new ImageEditorRedoAction(this);
 		this.imageEditorSave = new ImageEditorSaveAction(this);
 		this.imageEditorSaveAs = new ImageEditorSaveAsAction(this);
-		this.imageEditorResizeCanvas = new ResizeCanvasToolAction(this);
 		this.imageEditorPencil = new PencilToolAction(this);
+		this.imageEditorLine = new LineToolAction(this);
 		this.imageEditorShape = new ShapeToolAction(this);
 		this.imageEditorEraser = new EraserToolAction(this);
 		this.imageEditorStamp = new StampToolAction(this);
@@ -325,6 +336,7 @@ public class ActionRegistry {
 		this.imageEditorHSVNoise = new HSVNoiseToolAction(this);
 		this.imageEditorMoveLayer = new MoveToolAction(this);
 		this.imageEditorResizeLayer = new ResizeToolAction(this);
+		this.imageEditorResizeCanvas = new ResizeCanvasToolAction(this);
 
 		this.acceleratorMap = new AcceleratorMap(this);
 		this.acceleratorMap.registerAll();

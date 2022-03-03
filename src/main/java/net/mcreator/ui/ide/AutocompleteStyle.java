@@ -48,7 +48,7 @@ class AutocompleteStyle {
 				Class<?> treeNodeClass2 = Class.forName("org.fife.ui.autocomplete.AutoCompletePopupWindow");
 				Field field2 = treeNodeClass2.getDeclaredField("list");
 				field2.setAccessible(true);
-				JList list = (JList) field2.get(autoCompletePopupWindowRaw);
+				JList<?> list = (JList<?>) field2.get(autoCompletePopupWindowRaw);
 				list.setForeground(new Color(0xD9D9D9));
 				list.setSelectionForeground(Color.white);
 				list.setBackground((Color) UIManager.get("MCreatorLAF.DARK_ACCENT"));
@@ -60,11 +60,10 @@ class AutocompleteStyle {
 				for (Component com : components) {
 					if (com instanceof JComponent)
 						((JComponent) com).setBorder(null);
-					if (com instanceof JScrollPane) {
-						JScrollPane pane = (JScrollPane) com;
+					if (com instanceof JScrollPane pane) {
 						pane.setBackground((Color) UIManager.get("MCreatorLAF.DARK_ACCENT"));
-						pane.setBorder(BorderFactory
-								.createMatteBorder(0, 3, 0, 0, (Color) UIManager.get("MCreatorLAF.DARK_ACCENT")));
+						pane.setBorder(BorderFactory.createMatteBorder(0, 3, 0, 0,
+								(Color) UIManager.get("MCreatorLAF.DARK_ACCENT")));
 						pane.getVerticalScrollBar()
 								.setUI(new SlickDarkScrollBarUI((Color) UIManager.get("MCreatorLAF.DARK_ACCENT"),
 										(Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT"),
@@ -93,8 +92,8 @@ class AutocompleteStyle {
 
 				descWindow.setOpacity(0.85f);
 				descWindow.setSize(390, 220);
-				((JPanel) descWindow.getContentPane())
-						.setBorder(BorderFactory.createLineBorder((Color) UIManager.get("MCreatorLAF.BLACK_ACCENT")));
+				((JPanel) descWindow.getContentPane()).setBorder(
+						BorderFactory.createLineBorder((Color) UIManager.get("MCreatorLAF.BLACK_ACCENT")));
 
 			} catch (ClassNotFoundException | SecurityException | IllegalArgumentException | IllegalAccessException | NoSuchFieldException e1) {
 				LOG.error(e1.getMessage(), e1);

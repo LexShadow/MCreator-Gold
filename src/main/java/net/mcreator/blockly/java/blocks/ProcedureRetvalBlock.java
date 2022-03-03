@@ -23,34 +23,26 @@ import net.mcreator.blockly.BlocklyToCode;
 import net.mcreator.blockly.IBlockGenerator;
 import net.mcreator.element.parts.Procedure;
 import net.mcreator.generator.template.TemplateGeneratorException;
+import net.mcreator.ui.init.L10N;
 import net.mcreator.util.XMLUtil;
+import net.mcreator.workspace.elements.VariableType;
+import net.mcreator.workspace.elements.VariableTypeLoader;
+import org.apache.commons.lang3.StringUtils;
 import org.w3c.dom.Element;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class ProcedureRetvalBlock implements IBlockGenerator {
+	private final String[] names;
+
+	public ProcedureRetvalBlock() {
+		names = VariableTypeLoader.INSTANCE.getAllVariableTypes().stream().map(VariableType::getName)
+				.map(s -> s = "procedure_retval_" + s).toArray(String[]::new);
+	}
 
 	@Override public void generateBlock(BlocklyToCode master, Element block) throws TemplateGeneratorException {
-		String type;
-
-		String blocktype = block.getAttribute("type");
-		switch (blocktype) {
-		case "procedure_retval_number":
-			type = "NUMBER";
-			break;
-		case "procedure_retval_string":
-			type = "STRING";
-			break;
-		case "procedure_retval_logic":
-			type = "LOGIC";
-			break;
-		case "procedure_retval_itemstack":
-			type = "ITEMSTACK";
-			break;
-		default:
-			return;
-		}
+		String type = StringUtils.removeStart(block.getAttribute("type"), "procedure_retval_");
 
 		Element element = XMLUtil.getFirstChildrenWithName(block, "field");
 
@@ -60,7 +52,7 @@ public class ProcedureRetvalBlock implements IBlockGenerator {
 
 			if (!procedure.exists) {
 				master.addCompileNote(new BlocklyCompileNote(BlocklyCompileNote.Type.ERROR,
-						"Procedure return value block is calling nonexistent procedure " + procedure));
+						L10N.t("blockly.errors.procedure_retval.nonexistent", procedure)));
 				return;
 			}
 
@@ -75,14 +67,13 @@ public class ProcedureRetvalBlock implements IBlockGenerator {
 			}
 
 		} else {
-			master.addCompileNote(
-					new BlocklyCompileNote(BlocklyCompileNote.Type.ERROR, "Empty procedure return value block"));
+			master.addCompileNote(new BlocklyCompileNote(BlocklyCompileNote.Type.ERROR,
+					L10N.t("blockly.errors.procedure_retval.empty")));
 		}
 	}
 
 	@Override public String[] getSupportedBlocks() {
-		return new String[] { "procedure_retval_logic", "procedure_retval_number", "procedure_retval_string",
-				"procedure_retval_itemstack" };
+		return names;
 	}
 
 	@Override public BlockType getBlockType() {

@@ -18,17 +18,22 @@
 
 package net.mcreator.minecraft;
 
+import net.mcreator.element.types.Armor;
+import net.mcreator.io.ResourcePointer;
 import net.mcreator.ui.init.BlockItemIcons;
+import net.mcreator.ui.init.ImageMakerTexturesCache;
 import net.mcreator.ui.init.TiledImageCache;
 import net.mcreator.ui.init.UIRES;
 import net.mcreator.util.image.EmptyIcon;
 import net.mcreator.workspace.Workspace;
 import net.mcreator.workspace.elements.ModElement;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import javax.swing.*;
+import java.awt.*;
 import java.io.File;
 import java.util.List;
+import java.util.Objects;
 
 public class MCItem extends DataListEntry {
 
@@ -76,23 +81,59 @@ public class MCItem extends DataListEntry {
 		try {
 			if (name.startsWith("CUSTOM:")) {
 				if (new File(workspace.getFolderManager().getModElementPicturesCacheDir(),
-						name.replaceAll("CUSTOM:", "") + ".png").isFile())
+						name.replace("CUSTOM:", "") + ".png").isFile()) {
 					retval = new ImageIcon(
-							workspace.getFolderManager().getModElementPicturesCacheDir().getAbsolutePath() + "/" + name
-									.replaceAll("CUSTOM:", "") + ".png");
-				else if (name.endsWith(".helmet"))
-					retval = TiledImageCache.armorHelmet;
-				else if (name.endsWith(".body"))
-					retval = TiledImageCache.armorBody;
-				else if (name.endsWith(".legs"))
-					retval = TiledImageCache.armorLegs;
-				else if (name.endsWith(".boots"))
-					retval = TiledImageCache.armorBoots;
+							workspace.getFolderManager().getModElementPicturesCacheDir().getAbsolutePath() + "/"
+									+ name.replace("CUSTOM:", "") + ".png");
+				} else if (name.endsWith(".helmet")) {
+					retval = workspace.getFolderManager().getItemImageIcon(((Armor) Objects.requireNonNull(
+							workspace.getModElementByName(name.replace("CUSTOM:", "").replace(".helmet", ""))
+									.getGeneratableElement())).textureHelmet);
+				} else if (name.endsWith(".body")) {
+					retval = workspace.getFolderManager().getItemImageIcon(((Armor) Objects.requireNonNull(
+							workspace.getModElementByName(name.replace("CUSTOM:", "").replace(".body", ""))
+									.getGeneratableElement())).textureBody);
+				} else if (name.endsWith(".legs")) {
+					retval = workspace.getFolderManager().getItemImageIcon(((Armor) Objects.requireNonNull(
+							workspace.getModElementByName(name.replace("CUSTOM:", "").replace(".legs", ""))
+									.getGeneratableElement())).textureLeggings);
+				} else if (name.endsWith(".boots")) {
+					retval = workspace.getFolderManager().getItemImageIcon(((Armor) Objects.requireNonNull(
+							workspace.getModElementByName(name.replace("CUSTOM:", "").replace(".boots", ""))
+									.getGeneratableElement())).textureBoots);
+				} else if (name.endsWith(".bucket")) {
+					if (new File(workspace.getFolderManager().getModElementPicturesCacheDir(),
+							name.replace("CUSTOM:", "").replace(".bucket", "") + ".png").isFile()) {
+						retval = MinecraftImageGenerator.generateFluidBucketIcon(new ImageIcon(
+								workspace.getFolderManager().getModElementPicturesCacheDir().getAbsolutePath() + "/"
+										+ name.replace("CUSTOM:", "").replace(".bucket", "") + ".png"));
+					} else {
+						retval = TiledImageCache.bucket;
+					}
+				}
 			} else if (name.startsWith("TAG:")) {
 				return TAG_ICON;
+			} else if (name.startsWith("POTION:")) {
+				String potion = name.replace("POTION:", "");
+				if (potion.startsWith("CUSTOM:")) {
+					if (new File(workspace.getFolderManager().getModElementPicturesCacheDir(),
+							potion.replace("CUSTOM:", "") + ".png").isFile()) {
+						retval = new ImageIcon(
+								workspace.getFolderManager().getModElementPicturesCacheDir().getAbsolutePath() + "/"
+										+ potion.replace("CUSTOM:", "") + ".png");
+					} else {
+						retval = ImageMakerTexturesCache.CACHE.get(
+								new ResourcePointer("templates/textures/texturemaker/potion_bottle_overlay.png"));
+					}
+				} else if (DataListLoader.loadDataMap("potions").containsKey(potion)) {
+					int color = Integer.parseInt(DataListLoader.loadDataMap("potions").get(potion).getTexture());
+					retval = new ImageIcon(MinecraftImageGenerator.Preview.generatePotionIcon(new Color(color)));
+				} else {
+					retval = new ImageIcon(MinecraftImageGenerator.Preview.generatePotionIcon(Color.BLACK));
+				}
 			} else {
-				retval = BlockItemIcons
-						.getIconForItem(DataListLoader.loadDataMap("blocksitems").get(name).getTexture());
+				retval = BlockItemIcons.getIconForItem(
+						DataListLoader.loadDataMap("blocksitems").get(name).getTexture());
 			}
 
 			if (retval != null && retval.getImage() != null) {
@@ -124,7 +165,7 @@ public class MCItem extends DataListEntry {
 
 	public static final class Tag extends MCItem {
 
-		public Tag(@NotNull Workspace workspace, String name) {
+		public Tag(@Nonnull Workspace workspace, String name) {
 			super("TAG:" + name);
 			setType("tag");
 			icon = MCItem.getBlockIconBasedOnName(workspace, "TAG:" + name);
@@ -134,6 +175,18 @@ public class MCItem extends DataListEntry {
 			return true;
 		}
 
+	}
+
+	public static final class Potion extends MCItem {
+		public Potion(@Nonnull Workspace workspace, DataListEntry potion) {
+			super("POTION:" + potion.getName());
+			setType("potion");
+			icon = MCItem.getBlockIconBasedOnName(workspace, "POTION:" + potion.getName());
+		}
+
+		@Override public boolean isSupportedInWorkspace(Workspace workspace) {
+			return true;
+		}
 	}
 
 	public interface ListProvider {
